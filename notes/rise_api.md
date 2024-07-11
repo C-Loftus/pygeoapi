@@ -336,7 +336,7 @@ A generationEffort is essentially some sort of project with associated funding.
 }
 ```
 
-<!-- ## HorizontalDatum
+## HorizontalDatum
 ## ItemDisclaimer
 ## ItemStructure
 ## ItemType
@@ -367,4 +367,3 @@ A generationEffort is essentially some sort of project with associated funding.
 ## UnifiedRegion
 ## UpdateFrequency
 ## VerticalDatum 
--->
