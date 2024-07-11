@@ -10,6 +10,7 @@ CatalogItems contain a pointer back to the CatalogRecord
 A CatalogRecord is created from a generationEffort. 
 Locations contain geometric data.
 Results are not linked to any other endpoint and are queried independently. 
+Results output a location but it is a one way link. Locations do not link to results.
 
 ```mermaid
 graph TD;
@@ -25,7 +26,7 @@ graph TD;
     CatalogRecord --> GenerationEffort;
     Location --> GeometricData;
     GenerationEffort;
-    Result;
+    Result --> Location;
 
 ```
 
