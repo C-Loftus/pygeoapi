@@ -302,3 +302,19 @@ resources:
         type: process
         processor:
             name: HelloWorld
+
+    sensor-things:
+        type: collection
+        title: SensorThings
+        description: SensorThings
+        keywords:
+            - SensorThings
+        providers:
+            - type: feature
+              name: SensorThings
+              data: https://sensorthings-wq.brgm-rec.fr/FROST-Server/v1.0/
+              uri_field: uri
+              entity: Datastreams
+              time_field: phenomenonTime
+              intralink: true
+  
