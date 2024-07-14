@@ -20,3 +20,5 @@ sodapy
 xarray
 zarr
 s3fs<=2023.6.0
+
+geopandas

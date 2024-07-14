@@ -21,7 +21,7 @@ So the build chain is as per below:
 
 The official Docker image ships with a default configuration [default.config.yml](default.config.yml) with the project's test data and OGC API dataset collections.
 
-You can override this default config via a Docker volume mapping or by extending the Docker image and copying in your config.  See an [example from the pygeoapi demo server](https://github.com/geopython/demo.pygeoapi.io/tree/master/services/pygeoapi) for the latter method.
+You can override this default config via a Docker volume mapping or by extending the Docker image and copying in your config. See an [example from the pygeoapi demo server](https://github.com/geopython/demo.pygeoapi.io/tree/master/services/pygeoapi) for the latter method.
 
 ## Installing on a fresh Ubuntu installation
 
