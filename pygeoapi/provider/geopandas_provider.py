@@ -213,11 +213,15 @@ class GeoPandasProvider(BaseProvider):
                         raise ProviderQueryError()
             else:
                 for key, value in row.items():
-                    if key in ["lat", "long", "id"]:
-                        continue
-
                     LOGGER.debug(f'key: {key}, value: {value}')
                     feature['properties'][key] = value
+
+            # After filtering out specific properties, filter out 
+            # geometry and id which are never included
+            feature["properties"] = filter(
+                feature['properties'],
+                [self.x_field, self.y_field, self.id_field]
+            )
 
             if identifier and feature['id'] == identifier:
                 found = True
