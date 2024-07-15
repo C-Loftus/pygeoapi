@@ -33,7 +33,8 @@ from pygeoapi.provider.base_edr import BaseEDRProvider
 
 LOGGER = logging.getLogger(__name__)
 
-
+# TODO ASK do I need to extend baseprovider as well? Or is EDR sufficient on its own?
+# TODO ASK this xarray edr has cube and position, are those just specific to that?
 class GeoPandasEDRProvider(BaseEDRProvider):
     """GeoPandas EDR Provider"""
 
@@ -46,7 +47,7 @@ class GeoPandasEDRProvider(BaseEDRProvider):
 
         :param provider_def: provider definition
 
-        :returns: pygeoapi.provider.base_edr.BaseEDRProvider
+        :returns: pygeoapi.provider.GeoPandasEDRProvider
         """
 
         super().__init__(provider_def)

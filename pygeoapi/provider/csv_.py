@@ -98,7 +98,7 @@ class CSVProvider(BaseProvider):
         :param offset: starting record to return (default 0)
         :param limit: number of records to return (default 10)
         :param datetime_: temporal (datestamp or extent)
-        :param resulttype: return results or hit limit (default results)
+        :param resulttype: return resul ts or hit limit (default results)
         :param properties: list of tuples (name, value)
         :param select_properties: list of property names
         :param skip_geometry: bool of whether to skip geometry (default False)
@@ -195,6 +195,7 @@ class CSVProvider(BaseProvider):
 
         :param offset: starting record to return (default 0)
         :param limit: number of records to return (default 10)
+        :param identifier: feature id
         :param resulttype: return results or hit limit (default results)
         :param bbox: bounding box [minx,miny,maxx,maxy]
         :param datetime_: temporal (datestamp or extent)

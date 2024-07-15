@@ -30,7 +30,7 @@
 import pytest
 
 from pygeoapi.provider.base import ProviderItemNotFoundError
-from pygeoapi.provider.csv_ import CSVProvider
+from pygeoapi.provider.geopandas_provider import GeoPandasProvider
 
 from .util import get_test_file_path
 
@@ -65,9 +65,9 @@ def station_config():
         }
     }
 
-# TODO ASK unclear if this is the same config as above and 
+
 def test_query(config):
-    p = CSVProvider(config)
+    p = GeoPandasProvider(config)
 
     fields = p.get_fields()
     assert len(fields) == 4
@@ -112,13 +112,13 @@ def test_query(config):
     assert len(results['features']) == 1
 
     config['properties'] = ['value', 'stn_id']
-    p = CSVProvider(config)
+    p = GeoPandasProvider(config)
     results = p.query()
     assert len(results['features'][0]['properties']) == 2
 
 
 def test_get(config):
-    p = CSVProvider(config)
+    p = GeoPandasProvider(config)
 
     result = p.get('964')
     assert result['id'] == '964'
@@ -127,13 +127,13 @@ def test_get(config):
 
 def test_get_not_existing_item_raise_exception(config):
     """Testing query for a not existing object"""
-    p = CSVProvider(config)
+    p = GeoPandasProvider(config)
     with pytest.raises(ProviderItemNotFoundError):
         p.get('404')
 
 
 def test_get_station(station_config):
-    p = CSVProvider(station_config)
+    p = GeoPandasProvider(station_config)
 
     results = p.query(limit=20)
     assert len(results['features']) == 20

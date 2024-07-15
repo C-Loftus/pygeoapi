@@ -28,22 +28,24 @@
 # =================================================================
 
 import pytest
-import geopandas
+import tests.test_geopandas_provider as test_geopandas_provider, geodatasets
 
 from pygeoapi.provider.base import ProviderItemNotFoundError
 from pygeoapi.provider.geopandas_edr import GeoPandasEDRProvider
 
 from .util import get_test_file_path
 
+# TODO ASK: Can I use sample data in the geodatasets pkg Do I need a local path?
 path = get_test_file_path('data/obs.csv')
 stations_path = get_test_file_path('data/station_list.csv')
 
-
 @pytest.fixture()
 def config():
+
     return {
-        'name': 'CSV',
+        'name': 'GeoPandas',
         'type': 'feature',
+        # TODO ASK: why is this returning the path and not the data
         'data': path,
         'id_field': 'id',
         'geometry': {
@@ -59,7 +61,7 @@ def station_config():
         'name': 'CSV',
         'type': 'feature',
         'data': stations_path,
-        'id_field': 'wigos_station_identifier',
+        # 'id_field': 'wigos_station_identifier',
         'geometry': {
             'x_field': 'longitude',
             'y_field': 'latitude'
@@ -70,6 +72,7 @@ def station_config():
 def test_query(config):
     p = GeoPandasEDRProvider(config)
 
+    # TODO ASK: Fair to say that there will be similar patterns for geopandas?
     fields = p.get_fields()
     assert len(fields) == 4
     assert fields['value']['type'] == 'number'
