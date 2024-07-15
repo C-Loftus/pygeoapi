@@ -36,11 +36,13 @@ from enum import Enum
 from http import HTTPStatus
 
 from pygeoapi.error import GenericError
-from pygeoapi.provider.base import BaseProvider, ProviderQueryError, SchemaType
+from pygeoapi.provider.base import BaseProvider, ProviderItemNotFoundError, ProviderQueryError, SchemaType
 from pygeoapi.util import get_typed_value
 
 LOGGER = logging.getLogger(__name__)
 
+
+from typing import TypedDict
 
 class GeoPandasProvider(BaseProvider):
     """GeoPandas provider"""
@@ -58,7 +60,12 @@ class GeoPandasProvider(BaseProvider):
         super().__init__(provider_def)
         self.geometry_x = provider_def['geometry']['x_field']
         self.geometry_y = provider_def['geometry']['y_field']
-        self._data = geopandas.GeoDataFrame(provider_def['data'])
+
+        self._data = geopandas.read_file(provider_def['data'])
+        self._data["id"] = self._data["id"].astype('int64')
+        self._data["stn_id"] = self._data["id"].astype('int64')
+        self._data["value"] = self._data["value"].astype('float64')
+     
         self.fields = self.get_fields()
         
     def get_fields(self):
@@ -69,10 +76,26 @@ class GeoPandasProvider(BaseProvider):
 
         :returns: dict of field names and their associated JSON Schema types
         """
-        if not self._data:
+        if len(self._data) == 0:
             raise ValueError('Data not loaded')
+        
 
-        return {col: self._data[col].dtype for col in self._data.columns }
+
+        field_mapper =  {col: self._data[col].dtype.name for col in self._data.columns if col not in [self.geometry_x, self.geometry_y]}
+        
+       # Pandas has a different natural language than the pygeoapi spec expects
+        pandas_dtypes_to_ours = {
+            'float64': 'number',
+            'int64': 'integer',
+            'object': 'string'
+        }
+
+        our_types_names = {k: {
+            "type": pandas_dtypes_to_ours[v]
+        }
+        for k, v in field_mapper.items()}
+
+        return our_types_names
 
     # def get_schema(self, schema_type: SchemaType = SchemaType.item):
     #     """
@@ -140,7 +163,7 @@ class GeoPandasProvider(BaseProvider):
         if identifier is not None:
             # If we are querying for just one feature, we may have a different limit than the default
             # TODO should this be min? So min or this limit and limit in the function call?
-            limit = self.query(resulttype='hits').get('numberMatched')
+            limit = self.query(resulttype='hits')['numberMatched']
 
         # Create a dummy backup that we can overwrite
         df: geopandas.GeoDataFrame = self._data
@@ -167,7 +190,7 @@ class GeoPandasProvider(BaseProvider):
                 LOGGER.error(msg)
                 continue
 
-            feature = {'type': 'Feature', 'id': row[self.id_field]}
+            feature = {'type': 'Feature', 'id': str(row[self.id_field])}
 
             if skip_geometry:
                 feature['geometry'] = None
@@ -180,8 +203,9 @@ class GeoPandasProvider(BaseProvider):
             feature['properties'] = OrderedDict()
 
             #  TODO ASK little confused why we are filtering on self.properties not the properties passed in
-            if all_properties := set(self.properties).union(set(select_properties)):
-                for p in all_properties:
+            if self.properties or select_properties:
+                for p in set(self.properties) | set(select_properties):
+
                     try:
                         feature['properties'][p] = row[p]
                     except KeyError as err:
@@ -189,6 +213,9 @@ class GeoPandasProvider(BaseProvider):
                         raise ProviderQueryError()
             else:
                 for key, value in row.items():
+                    if key in ["lat", "long", "id"]:
+                        continue
+
                     LOGGER.debug(f'key: {key}, value: {value}')
                     feature['properties'][key] = value
 
@@ -198,7 +225,7 @@ class GeoPandasProvider(BaseProvider):
 
             feature_collection['features'].append(feature)
 
-        feature_collection['numberMatched'] = len(feature_collection['features'])
+            feature_collection['numberMatched'] = len(feature_collection['features'])
         
         if identifier:
             return None if not found else result
@@ -217,8 +244,11 @@ class GeoPandasProvider(BaseProvider):
 
         :returns: dict of single GeoJSON feature
         """
-
-        return self._data[self._data['id'] == identifier]
+        res =  self._data[self._data['id'] == identifier]
+        if res.empty:
+            err = f'item {identifier} not found'
+            LOGGER.error(err)
+            raise ProviderItemNotFoundError(err)
 
 
     def create(self, item):

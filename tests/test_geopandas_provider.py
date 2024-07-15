@@ -91,7 +91,7 @@ def test_query(config):
     results = p.query(offset=2, limit=1)
     assert len(results['features']) == 1
     assert results['features'][0]['id'] == '238'
-
+    # should just be stn_id, datetime and value
     assert len(results['features'][0]['properties']) == 3
 
     results = p.query(select_properties=['value'])

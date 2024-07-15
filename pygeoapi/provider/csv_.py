@@ -129,6 +129,7 @@ class CSVProvider(BaseProvider):
                 LOGGER.debug('Returning hits only')
                 feature_collection['numberMatched'] = len(list(data_))
                 return feature_collection
+                
             LOGGER.debug('Slicing CSV rows')
             for row in itertools.islice(data_, 0, None):
                 try:
@@ -151,6 +152,7 @@ class CSVProvider(BaseProvider):
                     feature['geometry'] = None
 
                 feature['properties'] = OrderedDict()
+
 
                 if self.properties or select_properties:
                     for p in set(self.properties) | set(select_properties):
