@@ -52,25 +52,12 @@ def config():
     }
 
 
-@pytest.fixture()
-def station_config():
-    return {
-        'name': 'CSV',
-        'type': 'feature',
-        'data': stations_path,
-        'id_field': 'wigos_station_identifier',
-        'geometry': {
-            'x_field': 'longitude',
-            'y_field': 'latitude'
-        }
-    }
-
-
-def test_query(config):
+def test_csv_query(config):
     p = GeoPandasProvider(config)
 
     fields = p.get_fields()
     assert len(fields) == 4
+    assert ['id', 'stn_id', 'datetime', 'value'] == list(fields.keys())
     assert fields['value']['type'] == 'number'
     assert fields['stn_id']['type'] == 'integer'
 
@@ -103,6 +90,11 @@ def test_query(config):
     results = p.query(skip_geometry=True)
     assert results['features'][0]['geometry'] is None
 
+    results = p.query(properties=[('stn_id', '604')])
+    assert len(results['features']) == 1
+    assert results['numberMatched'] == 1
+    assert results['numberReturned'] == 1
+
     results = p.query(properties=[('stn_id', '35')])
     assert len(results['features']) == 2
     assert results['numberMatched'] == 2
@@ -117,7 +109,7 @@ def test_query(config):
     assert len(results['features'][0]['properties']) == 2
 
 
-def test_get(config):
+def test_csv_get(config):
     p = GeoPandasProvider(config)
 
     result = p.get('964')
@@ -125,14 +117,27 @@ def test_get(config):
     assert result['properties']['value'] == 99.9
 
 
-def test_get_not_existing_item_raise_exception(config):
+def test_csv_get_not_existing_item_raise_exception(config):
     """Testing query for a not existing object"""
     p = GeoPandasProvider(config)
     with pytest.raises(ProviderItemNotFoundError):
         p.get('404')
 
 
-def test_get_station(station_config):
+@pytest.fixture()
+def station_config():
+    return {
+        'name': 'CSV',
+        'type': 'feature',
+        'data': stations_path,
+        'id_field': 'wigos_station_identifier',
+        'geometry': {
+            'x_field': 'longitude',
+            'y_field': 'latitude'
+        }
+    }
+
+def test_csv_get_station(station_config):
     p = GeoPandasProvider(station_config)
 
     results = p.query(limit=20)
@@ -145,3 +150,35 @@ def test_get_station(station_config):
 
     result = p.get('0-454-2-AWSNAMITAMBO')
     assert result['properties']['station_name'] == 'NAMITAMBO'
+
+hu04_path = get_test_file_path('data/hu04.gpkg')
+
+@pytest.fixture()
+def gpkg_config():
+    return {
+        'name': 'gpkg',
+        'type': 'feature',
+        'data': hu04_path,
+        'id_field': 'HUC4',
+    }
+
+def test_gpkg_query(gpkg_config):
+    p = GeoPandasProvider(gpkg_config)
+
+    results = p.query(limit=1)
+    assert len(results['features']) == 1
+
+    results = p.query(offset=1, limit=1)
+    assert len(results['features']) == 1
+
+    results = p.query(skip_geometry=True)
+    assert results['features'][0]['geometry'] is None
+
+    results = p.query(properties=[('uri', 'https://geoconnex.us/ref/hu04/0315')])
+    assert len(results['features']) == 1
+    assert results['features'][0]['properties']['uri'] == 'https://geoconnex.us/ref/hu04/0315'
+
+    results = p.query(bbox=(0, 0, 0, 0), properties=[('uri', 'https://geoconnex.us/ref/hu04/0315')])
+    assert len(results['features']) == 0
+
+

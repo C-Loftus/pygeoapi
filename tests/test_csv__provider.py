@@ -70,6 +70,7 @@ def test_query(config):
     p = CSVProvider(config)
 
     fields = p.get_fields()
+    print(fields.keys())
     assert len(fields) == 4
     assert fields['value']['type'] == 'number'
     assert fields['stn_id']['type'] == 'integer'

@@ -29,6 +29,8 @@
 
 from collections import OrderedDict
 import geopandas
+from shapely import intersects
+import shapely.geometry as geo
 import json
 import logging
 from typing import Literal, Optional
@@ -43,13 +45,21 @@ LOGGER = logging.getLogger(__name__)
 
 
 from typing import TypedDict
+from collections import defaultdict
+
+class Feature(TypedDict):
+    type: Literal['Feature']
+    geometry: dict
+    properties: dict
+
+PossibleGeometries = geo.LineString | geo.multilinestring.MultiLineString | geo.multipoint.MultiPoint | geo.multipolygon.MultiPolygon | geo.point.Point | geo.polygon.LinearRing | geo.polygon.Polygon
 
 class GeoPandasProvider(BaseProvider):
     """GeoPandas provider"""
 
     _data: Optional[geopandas.GeoDataFrame] = None
 
-    def __init__(self, provider_def):
+    def __init__(self, provider_def: dict):
         """
         Initialize object
 
@@ -57,18 +67,49 @@ class GeoPandasProvider(BaseProvider):
 
         :returns: pygeoapi.provider.base.GeoPandasProvider
         """
-        super().__init__(provider_def)
-        self.geometry_x = provider_def['geometry']['x_field']
-        self.geometry_y = provider_def['geometry']['y_field']
 
+        super().__init__(provider_def)
         self._data = geopandas.read_file(provider_def['data'])
-        self._data["id"] = self._data["id"].astype('int64')
-        self._data["stn_id"] = self._data["id"].astype('int64')
-        self._data["value"] = self._data["value"].astype('float64')
-     
-        self.fields = self.get_fields()
+             
+        # These fields should not be returned in the property list for a query
+        self._exclude_from_fields: list[str] = []
+
+        # Check if it was specified in the config
+        if "geometry" in provider_def:
+            if provider_def["geometry"]["x_field"] and provider_def["geometry"]["y_field"]:
+                self.geometry_x = provider_def['geometry']['x_field']
+                self.geometry_y = provider_def['geometry']['y_field']
+                self._exclude_from_fields.append(self.geometry_x)
+                self._exclude_from_fields.append(self.geometry_y)
+
+        # If we don't have x,y coords as separate columns then look for a geometry column
+        elif "geometry" in self._data.columns:
+            self.geometry_col = "geometry"
+            self._exclude_from_fields.append(self.geometry_col)
+            
+        # If we don't have any of the above, find the first geometry column and assume that is where the geometry is 
+        else:
+            for col in self._data.columns:
+                if hasattr(col, "geom_type"):
+                    self.geometry_col = col
+                    self._exclude_from_fields.append(self.geometry_col)
+                    break
+            else:
+                raise ValueError("Could not find geometry column")
+
+        self._data[self.id_field] = self._data[self.id_field].astype(str)
         
-    def get_fields(self):
+        if "stn_id" in self._data.columns:
+            self._data["stn_id"] = self._data["stn_id"].astype('int64')
+        if "value" in self._data.columns:
+            self._data["value"] = self._data["value"].astype('float64')
+
+        self._exclude_from_properties: list[str] = self._exclude_from_fields + [self.id_field]
+
+        self.fields = self.get_fields()
+
+        
+    def get_fields(self) -> dict[str, any]:
         """
         Get provider field information (names, types)
 
@@ -80,20 +121,26 @@ class GeoPandasProvider(BaseProvider):
             raise ValueError('Data not loaded')
         
 
-
-        field_mapper =  {col: self._data[col].dtype.name for col in self._data.columns if col not in [self.geometry_x, self.geometry_y]}
+        field_mapper =  {col: self._data[col].dtype.name for col in self._data.columns 
+                         if col not in self._exclude_from_fields
+                         }
         
-       # Pandas has a different natural language than the pygeoapi spec expects
+       # Pandas has a different ãmes for types than the pygeoapi spec expects
         pandas_dtypes_to_ours = {
             'float64': 'number',
             'int64': 'integer',
             'object': 'string'
         }
 
+        pandas_default = defaultdict(lambda: 'string')
+        pandas_default.update(pandas_dtypes_to_ours)
+
+        
         our_types_names = {k: {
-            "type": pandas_dtypes_to_ours[v]
+            "type": pandas_default[v]
+            }
+        for k, v in field_mapper.items()
         }
-        for k, v in field_mapper.items()}
 
         return our_types_names
 
@@ -133,7 +180,7 @@ class GeoPandasProvider(BaseProvider):
 
     # we want to support bbox and datetime_
     def query(self, offset=0, limit=10, resulttype: Literal['results', 'hits']='results',
-            identifier=None, bbox=[], datetime_=None, properties=[],
+            identifier=None, bbox: list[float] =[], datetime_=None, properties: list[tuple[str, str]] = [],
             select_properties=[], skip_geometry=False, q=None):
         """
         Query data with GeoPandas
@@ -151,8 +198,7 @@ class GeoPandasProvider(BaseProvider):
         :returns: dict of GeoJSON FeatureCollection
         """
 
-        found = False
-        result = None
+        found, result = False, False
         feature_collection: dict[str, str | list | int] = {
             'type': 'FeatureCollection',
             'features': [],
@@ -171,24 +217,25 @@ class GeoPandasProvider(BaseProvider):
         if properties:
             for prop in properties:
                 # Only keep rows where the property is the right value
-                df = df[df[prop[0]] == prop[1]]
+                (column_name, val_to_filter_by) = prop
+
+                # We need to convert this to a string since it appears the properties are always strings,
+                # but our dataframe contains integers or floats
+                df = df[df[column_name].astype(str) == val_to_filter_by]
 
         if resulttype == 'hits':
             # If we are querying for just the number matched, we don't
             # need to further process the df and can simply return len
             feature_collection['numberMatched'] = len(df)
             return feature_collection
+        
 
         for _, row in df.iterrows():
-            try:
-                coordinates = [
-                    float(row[self.geometry_x]),
-                    float(row[self.geometry_y]),
-                ]
-            except ValueError:
-                msg = f'Skipping row with invalid geometry: {row[self.id_field]}'
-                LOGGER.error(msg)
-                continue
+
+            if hasattr(self, 'geometry_x') and hasattr(self, 'geometry_y'):
+                coordinates = list(map(float, [row[self.geometry_x], row[self.geometry_y]]))
+            elif hasattr(self, 'geometry_col'):
+                coordinates: list[PossibleGeometries] = row[self.geometry_col]
 
             feature = {'type': 'Feature', 'id': str(row[self.id_field])}
 
@@ -199,36 +246,34 @@ class GeoPandasProvider(BaseProvider):
                     'type': 'Point',
                     'coordinates': coordinates
                 }
-
+            
             feature['properties'] = OrderedDict()
 
-            #  TODO ASK little confused why we are filtering on self.properties not the properties passed in
-            if self.properties or select_properties:
-                for p in set(self.properties) | set(select_properties):
+            for key, value in row.items():
+                properties_to_keep = set(self.properties).union(set(select_properties))
+                KEEP_ALL = len(properties_to_keep) == 0
 
-                    try:
-                        feature['properties'][p] = row[p]
-                    except KeyError as err:
-                        LOGGER.error(err)
-                        raise ProviderQueryError()
-            else:
-                for key, value in row.items():
-                    LOGGER.debug(f'key: {key}, value: {value}')
+                if KEEP_ALL or key in properties_to_keep:
                     feature['properties'][key] = value
+
+            if bbox:
+                if not feature[self.geometry_col]:
+                    continue
+                minx, miny, maxx, maxy = bbox
+                polygon = [(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy), (minx, miny)]
+                if not intersects(feature[self.geometry_col]["coordinates"], geo.Polygon(polygon)):
+                    continue
+
 
             # After filtering out specific properties, filter out 
             # geometry and id which are never included
-            feature["properties"] = filter(
-                feature['properties'],
-                [self.x_field, self.y_field, self.id_field]
-            )
+            feature['properties'] = {k: v for k, v in feature['properties'].items() if k not in self._exclude_from_properties}
 
-            if identifier and feature['id'] == identifier:
+            if identifier and feature[self.id_field] == identifier:
                 found = True
                 result = feature
 
             feature_collection['features'].append(feature)
-
             feature_collection['numberMatched'] = len(feature_collection['features'])
         
         if identifier:
@@ -248,11 +293,20 @@ class GeoPandasProvider(BaseProvider):
 
         :returns: dict of single GeoJSON feature
         """
-        res =  self._data[self._data['id'] == identifier]
+        res: geopandas.GeoSeries = self._data[self._data[self.id_field].astype(str) == identifier].squeeze(axis=0)
         if res.empty:
             err = f'item {identifier} not found'
             LOGGER.error(err)
             raise ProviderItemNotFoundError(err)
+
+        feature: Feature = {}
+        feature['type'] = 'Feature'
+        feature['id'] = res[self.id_field]
+        feature["properties"] = {
+          k: v for k, v in res.items()
+        }
+        return feature
+
 
 
     def create(self, item):
@@ -266,7 +320,7 @@ class GeoPandasProvider(BaseProvider):
 
         self._data = self._data.append(item, ignore_index=True)
 
-        return self._data["id"].iloc[-1]
+        return self._data[self.id_field].iloc[-1]
 
 
     def update(self, identifier, item: dict[str, any]):
@@ -301,7 +355,7 @@ class GeoPandasProvider(BaseProvider):
         :returns: `bool` of deletion result
         """
         try:
-            self._data = self._data[self._data['id'] != identifier]
+            self._data = self._data[self._data[self.id_field] != identifier]
             return True
         except Exception as e:
             LOGGER.error(e)
