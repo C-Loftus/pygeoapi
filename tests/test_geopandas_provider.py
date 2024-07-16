@@ -28,6 +28,8 @@
 # =================================================================
 
 import pytest
+import geopandas as gpd
+import shapely
 
 from pygeoapi.provider.base import ProviderItemNotFoundError
 from pygeoapi.provider.geopandas_provider import GeoPandasProvider
@@ -151,16 +153,28 @@ def test_csv_get_station(station_config):
     result = p.get('0-454-2-AWSNAMITAMBO')
     assert result['properties']['station_name'] == 'NAMITAMBO'
 
-hu04_path = get_test_file_path('data/hu04.gpkg')
+hu02_path = get_test_file_path('data/hu02.gpkg')
 
 @pytest.fixture()
 def gpkg_config():
     return {
         'name': 'gpkg',
         'type': 'feature',
-        'data': hu04_path,
-        'id_field': 'HUC4',
+        'data': hu02_path,
+        'id_field': 'HUC2',
     }
+
+def test_intersection():
+    gdf = gpd.read_file(hu02_path)
+    gdf = gdf[gdf['HUC2'] == '01']
+    
+    minx, miny, maxx, maxy =  -73.0, 40.0, -71.0, 42.0
+    polygon = shapely.geometry.Polygon([(minx, miny), (minx, maxy), (maxx, maxy), (maxx, miny)])
+    huc_range : shapely.geometry.MultiPolygon = gdf["geometry"].iloc[0]
+
+    assert isinstance(huc_range, shapely.geometry.MultiPolygon)
+    assert isinstance(polygon, shapely.geometry.Polygon)
+    assert shapely.intersects(polygon, huc_range) == True
 
 def test_gpkg_query(gpkg_config):
     p = GeoPandasProvider(gpkg_config)
@@ -174,11 +188,14 @@ def test_gpkg_query(gpkg_config):
     results = p.query(skip_geometry=True)
     assert results['features'][0]['geometry'] is None
 
-    results = p.query(properties=[('uri', 'https://geoconnex.us/ref/hu04/0315')])
+    results = p.query(properties=[('uri', 'https://geoconnex.us/ref/hu02/07')])
     assert len(results['features']) == 1
-    assert results['features'][0]['properties']['uri'] == 'https://geoconnex.us/ref/hu04/0315'
+    assert results['features'][0]['properties']['uri'] == 'https://geoconnex.us/ref/hu02/07'
 
-    results = p.query(bbox=(0, 0, 0, 0), properties=[('uri', 'https://geoconnex.us/ref/hu04/0315')])
+    results = p.query(bbox=(0, 0, 0, 0), properties=[('uri', 'https://geoconnex.us/ref/hu02/07')])
     assert len(results['features']) == 0
+
+    results = p.query(bbox=(-180, -90, -180, 90))
+    assert len(results['features']) == 1
 
 

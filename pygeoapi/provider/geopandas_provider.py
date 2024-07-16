@@ -233,9 +233,9 @@ class GeoPandasProvider(BaseProvider):
         for _, row in df.iterrows():
 
             if hasattr(self, 'geometry_x') and hasattr(self, 'geometry_y'):
-                coordinates = list(map(float, [row[self.geometry_x], row[self.geometry_y]]))
+                coordinates = [float(row[self.geometry_x]), float(row[self.geometry_y])]
             elif hasattr(self, 'geometry_col'):
-                coordinates: list[PossibleGeometries] = row[self.geometry_col]
+                coordinates: PossibleGeometries = row[self.geometry_col]
 
             feature = {'type': 'Feature', 'id': str(row[self.id_field])}
 
@@ -256,15 +256,20 @@ class GeoPandasProvider(BaseProvider):
                 if KEEP_ALL or key in properties_to_keep:
                     feature['properties'][key] = value
 
-            if bbox:
+            if len(bbox) == 4:
                 if not feature[self.geometry_col]:
                     continue
+
                 minx, miny, maxx, maxy = bbox
-                polygon = [(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy), (minx, miny)]
-                if not intersects(feature[self.geometry_col]["coordinates"], geo.Polygon(polygon)):
+                query_box = geo.Polygon([(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)])
+                feature_polygon: PossibleGeometries = feature[self.geometry_col]["coordinates"]
+
+                if not intersects(feature_polygon, query_box):
+                    print(f"{feature[self.geometry_col]} does not intersect bbox {bbox}")
+
                     continue
 
-
+                    
             # After filtering out specific properties, filter out 
             # geometry and id which are never included
             feature['properties'] = {k: v for k, v in feature['properties'].items() if k not in self._exclude_from_properties}
