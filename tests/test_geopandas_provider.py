@@ -30,6 +30,7 @@
 import pytest
 import geopandas as gpd
 import shapely
+import datetime
 
 from pygeoapi.provider.base import ProviderItemNotFoundError
 from pygeoapi.provider.geopandas_provider import GeoPandasProvider
@@ -164,18 +165,20 @@ def gpkg_config():
         'id_field': 'HUC2',
     }
 
-# Make sure the way we are filtering the dataframe works in general
+# Make sure the way we are filtering the dataframe works in general outside of the provider
 def test_intersection():
     gdf = gpd.read_file(hu02_path)
     gdf = gdf[gdf['HUC2'] == '01']
     
     minx, miny, maxx, maxy =  -70.5, 43.0, -70.0, 43.3
     polygon = shapely.geometry.Polygon([(minx, miny), (minx, maxy), (maxx, maxy), (maxx, miny)])
+    box = shapely.box(minx, miny, maxx, maxy)
     huc_range : shapely.geometry.MultiPolygon = gdf["geometry"].iloc[0]
 
     assert isinstance(huc_range, shapely.geometry.MultiPolygon)
     assert isinstance(polygon, shapely.geometry.Polygon)
     assert shapely.intersects(polygon, huc_range) == True
+    assert shapely.intersects(box, huc_range) == True
 
     gdf = gpd.read_file(hu02_path)
     box = shapely.box(minx, miny, maxx, maxy)
@@ -244,13 +247,28 @@ def test_gpkg_date_query(gpkg_config):
     assert len(results['features']) == 2
     assert results['features'][0]['properties']['LOADDATE'] == '2016-10-11 21:37:03+00:00'
     assert results['features'][1]['properties']['LOADDATE'] == '2016-09-22 06:01:28+00:00'
-
+    
 def test_gpkg_sort_query(gpkg_config):
     p = GeoPandasProvider(gpkg_config)
 
     results = p.query(sortby=[{'property': 'LOADDATE', 'order': '-'}])
-    for f in results['features']:
-        print(f['id'], f['type'], f['properties']['LOADDATE'])
-    # assert len(results['features']) == len(p._data)
-    # assert results['features'][0]['properties']['LOADDATE'] == '2016-09-22 06:01:28+00:00'
+    # Sort by descending so we expect the newest date first
+    assert results['features'][0]['properties']['LOADDATE'] == '2019-10-31 16:20:07+00:00'
+
+    # Create a dummy row In order to test breaking ties
+    dummy_row = {
+        'uri'    : '_',
+        'NAME'   : 'AAAAAAA_THIS_KEY_SHOULD_BE_SORTED_TO_BE_FIRST',
+        'gnis_url': '_',
+        'GNIS_ID': '_',
+        'HUC2'   : '_',
+        # Tie for the latest date in the dataset
+        'LOADDATE': datetime.datetime.fromisoformat('2019-10-31T16:20:07+00:00'),
+        'geometry': shapely.box(0, 0, 0, 0)
+    }
     
+    p.gdf = p.gdf._append(dummy_row, ignore_index=True)
+    assert(len(p.gdf)) == 23
+
+    results = p.query(sortby=[{'property': 'LOADDATE', 'order': '-'}, {'property': 'NAME', 'order': '+'}])
+    assert results['features'][0]['properties']['NAME'] == 'AAAAAAA_THIS_KEY_SHOULD_BE_SORTED_TO_BE_FIRST'

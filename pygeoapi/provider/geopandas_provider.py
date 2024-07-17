@@ -55,8 +55,10 @@ class FeatureGeometry(TypedDict):
 
 # Non exhaustive
 class FeatureProperties(TypedDict):
-    timestamp: Optional[str]
-    geometry: Optional[FeatureGeometry]
+    # These are likely to be included but can be specified with other names
+    # timestamp: Optional[str]
+    # geometry: Optional[FeatureGeometry]
+    pass
 
 class Feature(TypedDict):
     type: Literal['Feature']
@@ -78,31 +80,68 @@ class FeatureCollection(TypedDict):
 class GeoPandasProvider(BaseProvider):
     """GeoPandas provider"""
 
-    _data: geopandas.GeoDataFrame
+    gdf: geopandas.GeoDataFrame
 
     def _set_time_field(self, provider_def: dict):
         """
-        Set time field and manage if there is a specific "LOADDATE" column or not 
+        Set time field and check if there is a specific "LOADDATE" column or not 
         """
         if "time_field" in provider_def:
             self.time_field = provider_def['time_field']    
         # else look for a column named LOADDATE
-        elif "LOADDATE" in self._data.columns:
+        elif "LOADDATE" in self.gdf.columns:
             self.time_field = "LOADDATE"
         else:
-            for col in self._data.columns:
-                if isinstance(self._data[col].iloc[0], (datetime.date, datetime.datetime)):
+            for col in self.gdf.columns:
+                if isinstance(self.gdf[col].iloc[0], (datetime.date, datetime.datetime)):
                     self.time_field = col
                     break
             else:
                 LOGGER.warning("No time field found")
                 return
         
-        self._data[self.time_field] = pandas.to_datetime(self._data[self.time_field])
+        self.gdf[self.time_field] = pandas.to_datetime(self.gdf[self.time_field])
+
+    def _filter_by_date(self,df: geopandas.GeoDataFrame, datetime_: str) -> geopandas.GeoDataFrame:
+        """
+        Filter by date
+        """
+        dateRange = datetime_.split('/') 
+
+        if START_AND_END := len(dateRange) == 2:
+            start, end = dateRange
+
+            # python does not accept Z at the end of the datetime even though that is a valid ISO 8601 datetime
+            if start.endswith('Z'):
+                start = start.replace('Z', '+00:00')
+
+            if end.endswith('Z'):
+                end = end.replace('Z', '+00:00')
+
+            start = datetime.datetime.min if start == ".." else datetime.datetime.fromisoformat(start)
+            end = datetime.datetime.max if end == ".." else datetime.datetime.fromisoformat(end)
+            start, end = start.replace(tzinfo=datetime.timezone.utc), end.replace(tzinfo=datetime.timezone.utc)
+
+            if start > end:
+                raise Exception("Start date must be before end date but got {} and {}".format(start, end))
+            
+            # If the user just passes in 2019/.. this still handles the match for all days in 2019
+            # since the iso format will create the start as 2019-01-01
+            return df[(df[self.time_field] >= start) & (df[self.time_field] <= end)]
+
+        elif ONLY_MATCH_ONE_DATE := len(dateRange) == 1:
+            dates: geopandas.GeoSeries = df[self.time_field]
+            # datetime_obj = datetime.datetime.fromisoformat(datetime_)    
+            
+            # By casting to a string we can use .str.contains to coarsely check. 
+            # We want 2019-10 to match 2019-10-01, 2019-10-02, etc.
+            return df[dates.astype(str).str.startswith(datetime_)]
+        else:
+            raise Exception("datetime_ must be a date or date range with two dates separated by '/' but got {}".format(datetime_))
         
     def _set_geometry_fields(self, provider_def: dict):
         """
-        Set geometry fields and manage both if there is a point-based csv or a shapely geometry column
+        Set geometry fields and check both if there is a point-based csv or a shapely geometry column
         """
         # Check if it was specified in the config
         if "geometry" in provider_def:
@@ -113,13 +152,13 @@ class GeoPandasProvider(BaseProvider):
                 self._exclude_from_fields.append(self.geometry_y)
 
         # If we don't have x,y coords as separate columns then look for a geometry column
-        elif "geometry" in self._data.columns:
+        elif "geometry" in self.gdf.columns:
             self.geometry_col = "geometry"
             self._exclude_from_fields.append(self.geometry_col)
             
         # If we don't have any of the above, find the first geometry column and assume that is where the geometry is 
         else:
-            for col in self._data.columns:
+            for col in self.gdf.columns:
                 if hasattr(col, "geom_type"):
                     self.geometry_col = col
                     self._exclude_from_fields.append(self.geometry_col)
@@ -137,7 +176,7 @@ class GeoPandasProvider(BaseProvider):
         """
 
         super().__init__(provider_def)
-        self._data = geopandas.read_file(provider_def['data'])
+        self.gdf = geopandas.read_file(provider_def['data'])
              
         # These fields should not be returned in the property list for a query
         self._exclude_from_fields: list[str] = []
@@ -145,12 +184,12 @@ class GeoPandasProvider(BaseProvider):
         self._set_time_field(provider_def)
         self._set_geometry_fields(provider_def)
             
-        self._data[self.id_field] = self._data[self.id_field].astype(str)
+        self.gdf[self.id_field] = self.gdf[self.id_field].astype(str)
         
-        if "stn_id" in self._data.columns:
-            self._data["stn_id"] = self._data["stn_id"].astype('int64')
-        if "value" in self._data.columns:
-            self._data["value"] = self._data["value"].astype('float64')
+        if "stn_id" in self.gdf.columns:
+            self.gdf["stn_id"] = self.gdf["stn_id"].astype('int64')
+        if "value" in self.gdf.columns:
+            self.gdf["value"] = self.gdf["value"].astype('float64')
 
         self._exclude_from_properties: list[str] = self._exclude_from_fields + [self.id_field]
 
@@ -165,11 +204,11 @@ class GeoPandasProvider(BaseProvider):
 
         :returns: dict of field names and their associated JSON Schema types
         """
-        if len(self._data) == 0:
+        if len(self.gdf) == 0:
             raise ValueError('Data not loaded')
         
 
-        field_mapper =  {col: self._data[col].dtype.name for col in self._data.columns 
+        field_mapper =  {col: self.gdf[col].dtype.name for col in self.gdf.columns 
                          if col not in self._exclude_from_fields
                          }
         
@@ -203,7 +242,7 @@ class GeoPandasProvider(BaseProvider):
     #     """
         
 
-    # def get_data_path(self, baseurl, urlpath, dirpath):
+    # def getgdf_path(self, baseurl, urlpath, dirpath):
     #     """
     #     Gets directory listing or file description or raw file dump
 
@@ -240,6 +279,7 @@ class GeoPandasProvider(BaseProvider):
         :param resulttype: return results or hit limit (default results)
         :param properties: Properties with specific values to select list of tuples (name, value)
         :param select_properties: list of general properties to select regardless of values
+        :param sortby: How to return the sorted features list of dicts (property, order)
         :param skip_geometry: bool of whether to skip geometry (default False)
         :param q: full-text search term(s)
 
@@ -263,8 +303,8 @@ class GeoPandasProvider(BaseProvider):
             limit = self.query(resulttype='hits')['numberMatched']
 
         # Create a dummy backup that we can overwrite
-        df: geopandas.GeoDataFrame = self._data
-
+        df: geopandas.GeoDataFrame = self.gdf
+        
         if properties:
             for prop in properties:
                 (column_name, val_to_filter_by) = prop
@@ -280,56 +320,21 @@ class GeoPandasProvider(BaseProvider):
             # datetime_obj to further process the df and can simply return len
             feature_collection['numberMatched'] = len(df)
             return feature_collection
-        
+
         if BBOX_DEFINED := len(bbox) == 4:
             minx, miny, maxx, maxy = bbox
             bbox_geom = box(minx, miny, maxx, maxy)
             df = df[df["geometry"].intersects(bbox_geom)]
-        elif len(bbox) != 4 and len(bbox) != 0:
+        elif INVALID_BBOX := (len(bbox) != 4 and len(bbox) != 0):
             raise Exception("bbox must be a list of 4 values got {}".format(len(bbox)))
-        
-        for property in sortby: 
-            sort_key = property['property']
-            sort_direction = property['order']
-            ascending = True if sort_direction == '+' else False
-            # We have to reassign each time given the fact we can have an array of sort strategies 
-            # and they could alternate ascending and descending
-            df = df.sort_values(by=sort_key, ascending=ascending) 
+
+        if sortby:
+            sort_keys = [sort_key['property'] for sort_key in sortby]
+            sort_directions = [ True if sort_key['order'] == '+' else False for sort_key in sortby]
+            df = df.sort_values(by=sort_keys, ascending=sort_directions)
 
         if datetime_ is not None:
-
-            dateRange = datetime_.split('/') 
-            if len(dateRange) > 2:
-                raise Exception("datetime_ must be a date or date range with two dates separated by '/' but got {}".format(datetime_))
-            elif START_AND_END := len(dateRange) == 2:
-                start, end = dateRange
-
-                # python does not accept Z at the end of the datetime even though that is a valid ISO 8601 datetime
-                if start.endswith('Z'):
-                    start = start.replace('Z', '+00:00')
-
-                if end.endswith('Z'):
-                    end = end.replace('Z', '+00:00')
-
-                start = datetime.datetime.min if start == ".." else datetime.datetime.fromisoformat(start)
-                end = datetime.datetime.max if end == ".." else datetime.datetime.fromisoformat(end)
-                start, end = start.replace(tzinfo=datetime.timezone.utc), end.replace(tzinfo=datetime.timezone.utc)
-
-                if start > end:
-                    raise Exception("Start date must be before end date but got {} and {}".format(start, end))
-                
-                # If the user just passes in 2019/.. this still handles the match for all days in 2019
-                # since the iso format will create the start as 2019-01-01
-                df = df[(df[self.time_field] >= start) & (df[self.time_field] <= end)]
-
-            if ONLY_MATCH_ONE_DATE := len(dateRange) == 1:
-                dates: geopandas.GeoSeries = df[self.time_field]
-                # datetime_obj = datetime.datetime.fromisoformat(datetime_)    
-                
-                # By casting to a string we can use .str.contains to coarsely check. 
-                # We want 2019-10 to match 2019-10-01, 2019-10-02, etc.
-                df = df[dates.astype(str).str.startswith(datetime_)]
-                assert len(df[self.time_field]) != 0, print( dates[0])
+            df = self._filter_by_date(df, datetime_)
 
         for _, row in df.iterrows():
 
@@ -372,7 +377,8 @@ class GeoPandasProvider(BaseProvider):
             feature_collection['features'].append(feature)
             feature_collection['numberMatched'] = len(feature_collection['features'])
         
-        
+        assert len(feature_collection['features']) == len(df)
+
         if identifier:
             return None if not found else result
 
@@ -395,7 +401,7 @@ class GeoPandasProvider(BaseProvider):
 
         :returns: dict of single GeoJSON feature
         """
-        res: geopandas.GeoSeries = self._data[self._data[self.id_field].astype(str) == identifier].squeeze(axis=0)
+        res: geopandas.GeoSeries = self.gdf[self.gdf[self.id_field].astype(str) == identifier].squeeze(axis=0)
         if res.empty:
             err = f'item {identifier} not found'
             LOGGER.error(err)
@@ -420,9 +426,9 @@ class GeoPandasProvider(BaseProvider):
         :returns: identifier of created item
         """
 
-        self._data = self._data.append(item, ignore_index=True)
+        self.gdf = self.gdf.append(item, ignore_index=True)
 
-        return self._data[self.id_field].iloc[-1]
+        return self.gdf[self.id_field].iloc[-1]
 
 
     def update(self, identifier, item: dict[str, any]):
@@ -435,15 +441,15 @@ class GeoPandasProvider(BaseProvider):
         :returns: `bool` of update result
         """
 
-        if not self._data:
+        if not self.gdf:
             LOGGER.error("Tried to update a GeoPandasProvider without the dataframe loaded")
             return False
 
-        if identifier not in self._data.index:
+        if identifier not in self.gdf.index:
             return False 
 
         for key, value in item.items():
-            self._data.at[identifier, key] = value
+            self.gdf.at[identifier, key] = value
 
         return True 
 
@@ -457,7 +463,7 @@ class GeoPandasProvider(BaseProvider):
         :returns: `bool` of deletion result
         """
         try:
-            self._data = self._data[self._data[self.id_field] != identifier]
+            self.gdf = self.gdf[self.gdf[self.id_field] != identifier]
             return True
         except Exception as e:
             LOGGER.error(e)
