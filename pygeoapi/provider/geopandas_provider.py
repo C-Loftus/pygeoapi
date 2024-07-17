@@ -37,7 +37,7 @@ import logging
 from typing import Literal, Optional
 
 from pygeoapi.error import GenericError
-from pygeoapi.provider.base import BaseProvider, ProviderItemNotFoundError, ProviderQueryError, SchemaType
+from pygeoapi.provider.base import BaseProvider, ProviderInvalidDataError, ProviderItemNotFoundError, ProviderNoDataError, ProviderQueryError, SchemaType
 
 LOGGER = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class GeoPandasProvider(BaseProvider):
             start, end = start.replace(tzinfo=datetime.timezone.utc), end.replace(tzinfo=datetime.timezone.utc)
 
             if start > end:
-                raise Exception("Start date must be before end date but got {} and {}".format(start, end))
+                raise ProviderQueryError('Start date must be before end date but got {} and {}'.format(start, end))
             
             # If the user just passes in 2019/.. this still handles the match for all days in 2019
             # since the iso format will create the start as 2019-01-01
@@ -131,13 +131,12 @@ class GeoPandasProvider(BaseProvider):
 
         elif ONLY_MATCH_ONE_DATE := len(dateRange) == 1:
             dates: geopandas.GeoSeries = df[self.time_field]
-            # datetime_obj = datetime.datetime.fromisoformat(datetime_)    
             
             # By casting to a string we can use .str.contains to coarsely check. 
             # We want 2019-10 to match 2019-10-01, 2019-10-02, etc.
             return df[dates.astype(str).str.startswith(datetime_)]
         else:
-            raise Exception("datetime_ must be a date or date range with two dates separated by '/' but got {}".format(datetime_))
+            raise ProviderQueryError("datetime_ must be a date or date range with two dates separated by '/' but got {}".format(datetime_))
         
     def _set_geometry_fields(self, provider_def: dict):
         """
@@ -164,7 +163,8 @@ class GeoPandasProvider(BaseProvider):
                     self._exclude_from_fields.append(self.geometry_col)
                     break
             else:
-                raise ValueError("Could not find geometry column")
+                # Assuming that there is no reason to read in geometric data without geometry
+                LOGGER.warning("No geometry column found")
 
     def __init__(self, provider_def: dict):
         """
@@ -176,7 +176,14 @@ class GeoPandasProvider(BaseProvider):
         """
 
         super().__init__(provider_def)
-        self.gdf = geopandas.read_file(provider_def['data'])
+
+        try:
+            self.gdf = geopandas.read_file(provider_def['data'])
+        except FileNotFoundError as ex:
+            raise ProviderNoDataError(f"Tried to read GeoDataFrame: {ex} but it does not exist")
+        except Exception as ex:
+            raise ProviderInvalidDataError(f"Failed to read GeoDataFrame: {ex}")
+            
              
         # These fields should not be returned in the property list for a query
         self._exclude_from_fields: list[str] = []
@@ -205,7 +212,7 @@ class GeoPandasProvider(BaseProvider):
         :returns: dict of field names and their associated JSON Schema types
         """
         if len(self.gdf) == 0:
-            raise ValueError('Data not loaded')
+            raise ProviderNoDataError("No data found to get fields from")
         
 
         field_mapper =  {col: self.gdf[col].dtype.name for col in self.gdf.columns 
@@ -231,39 +238,41 @@ class GeoPandasProvider(BaseProvider):
 
         return our_types_names
 
-    # def get_schema(self, schema_type: SchemaType = SchemaType.item):
-    #     """
-    #     Get provider schema model
+    def get_schema(self, schema_type: SchemaType = SchemaType.item):
+        """
+        Get provider schema model
 
-    #     :param schema_type: `SchemaType` of schema (default is 'item')
+        :param schema_type: `SchemaType` of schema (default is 'item')
 
-    #     :returns: tuple pair of `str` of media type and `dict` of schema
-    #               (i.e. JSON Schema)
-    #     """
+        :returns: tuple pair of `str` of media type and `dict` of schema
+                  (i.e. JSON Schema)
+        """
+
+        raise NotImplementedError()
         
 
-    # def getgdf_path(self, baseurl, urlpath, dirpath):
-    #     """
-    #     Gets directory listing or file description or raw file dump
+    def getgdf_path(self, baseurl, urlpath, dirpath):
+        """
+        Gets directory listing or file description or raw file dump
 
-    #     :param baseurl: base URL of endpoint
-    #     :param urlpath: base path of URL
-    #     :param dirpath: directory basepath (equivalent of URL)
+        :param baseurl: base URL of endpoint
+        :param urlpath: base path of URL
+        :param dirpath: directory basepath (equivalent of URL)
 
-    #     :returns: `dict` of file listing or `dict` of GeoJSON item or raw file
-    #     """
+        :returns: `dict` of file listing or `dict` of GeoJSON item or raw file
+        """
 
+        raise NotImplementedError()
 
+    def get_metadata(self):
+        """
+        Provide data/file metadata
 
-    # def get_metadata(self):
-    #     """
-    #     Provide data/file metadata
+        :returns: `dict` of metadata construct (format
+                  determined by provider/standard)
+        """
 
-    #     :returns: `dict` of metadata construct (format
-    #               determined by provider/standard)
-    #     """
-
-    #     raise NotImplementedError()
+        raise NotImplementedError()
 
     # we want to support bbox and datetime_
     def query(self, offset=0, limit=10, resulttype: Literal['results', 'hits']='results',
@@ -326,11 +335,17 @@ class GeoPandasProvider(BaseProvider):
             bbox_geom = box(minx, miny, maxx, maxy)
             df = df[df["geometry"].intersects(bbox_geom)]
         elif INVALID_BBOX := (len(bbox) != 4 and len(bbox) != 0):
-            raise Exception("bbox must be a list of 4 values got {}".format(len(bbox)))
+            raise ProviderQueryError("bbox must be a list of 4 values got {}".format(len(bbox)))
 
         if sortby:
             sort_keys = [sort_key['property'] for sort_key in sortby]
+
+            for sort_specifier in sortby:
+                if "+" != sort_specifier['order'] and "-" != sort_specifier['order']:
+                    raise ProviderQueryError("sortby order must be + or - got {}".format(sort_specifier['order']))
+                
             sort_directions = [ True if sort_key['order'] == '+' else False for sort_key in sortby]
+
             df = df.sort_values(by=sort_keys, ascending=sort_directions)
 
         if datetime_ is not None:
@@ -358,6 +373,8 @@ class GeoPandasProvider(BaseProvider):
                 elif hasattr(self, 'geometry_col'):
                     feature['geometry']["coordinates"] = row[self.geometry_col]
                     feature['geometry']['type'] = row[self.geometry_col].geom_type
+                else:
+                    raise ProviderQueryError('The config passed in does not specify which geometry column to use')
 
         
             for key, value in row.items():
@@ -377,8 +394,6 @@ class GeoPandasProvider(BaseProvider):
             feature_collection['features'].append(feature)
             feature_collection['numberMatched'] = len(feature_collection['features'])
         
-        assert len(feature_collection['features']) == len(df)
-
         if identifier:
             return None if not found else result
 
@@ -393,7 +408,7 @@ class GeoPandasProvider(BaseProvider):
         return feature_collection
 
 
-    def get(self, identifier, **kwargs):
+    def get(self, identifier: str, **kwargs):
         """
         query the provider by id
 
@@ -401,6 +416,7 @@ class GeoPandasProvider(BaseProvider):
 
         :returns: dict of single GeoJSON feature
         """
+        # 
         res: geopandas.GeoSeries = self.gdf[self.gdf[self.id_field].astype(str) == identifier].squeeze(axis=0)
         if res.empty:
             err = f'item {identifier} not found'
@@ -426,7 +442,7 @@ class GeoPandasProvider(BaseProvider):
         :returns: identifier of created item
         """
 
-        self.gdf = self.gdf.append(item, ignore_index=True)
+        self.gdf = self.gdf._append(item, ignore_index=True)
 
         return self.gdf[self.id_field].iloc[-1]
 
@@ -442,8 +458,7 @@ class GeoPandasProvider(BaseProvider):
         """
 
         if not self.gdf:
-            LOGGER.error("Tried to update a GeoPandasProvider without the dataframe loaded")
-            return False
+            raise ProviderNoDataError("No data in provider")
 
         if identifier not in self.gdf.index:
             return False 
