@@ -35,16 +35,11 @@ from shapely import box
 import shapely.geometry
 import logging
 from typing import Literal, Optional
-
-from pygeoapi.error import GenericError
+from typing import TypedDict
+from collections import defaultdict
 from pygeoapi.provider.base import BaseProvider, ProviderInvalidDataError, ProviderItemNotFoundError, ProviderNoDataError, ProviderQueryError, SchemaType
 
 LOGGER = logging.getLogger(__name__)
-
-
-from typing import TypedDict
-from collections import defaultdict
-
 
 # All types exposed by shapely
 PossibleGeometries = shapely.geometry.LineString | shapely.geometry.multilinestring.MultiLineString | shapely.geometry.multipoint.MultiPoint | shapely.geometry.multipolygon.MultiPolygon | shapely.geometry.point.Point | shapely.geometry.polygon.LinearRing | shapely.geometry.polygon.Polygon
@@ -108,7 +103,7 @@ class GeoPandasProvider(BaseProvider):
         """
         dateRange = datetime_.split('/') 
 
-        if START_AND_END := len(dateRange) == 2:
+        if _START_AND_END := len(dateRange) == 2:
             start, end = dateRange
 
             # python does not accept Z at the end of the datetime even though that is a valid ISO 8601 datetime
@@ -129,7 +124,7 @@ class GeoPandasProvider(BaseProvider):
             # since the iso format will create the start as 2019-01-01
             return df[(df[self.time_field] >= start) & (df[self.time_field] <= end)]
 
-        elif ONLY_MATCH_ONE_DATE := len(dateRange) == 1:
+        elif _ONLY_MATCH_ONE_DATE := len(dateRange) == 1:
             dates: geopandas.GeoSeries = df[self.time_field]
             
             # By casting to a string we can use .str.contains to coarsely check. 
@@ -330,11 +325,11 @@ class GeoPandasProvider(BaseProvider):
             feature_collection['numberMatched'] = len(df)
             return feature_collection
 
-        if BBOX_DEFINED := len(bbox) == 4:
+        if _BBOX_DEFINED := len(bbox) == 4:
             minx, miny, maxx, maxy = bbox
             bbox_geom = box(minx, miny, maxx, maxy)
             df = df[df["geometry"].intersects(bbox_geom)]
-        elif INVALID_BBOX := (len(bbox) != 4 and len(bbox) != 0):
+        elif _INVALID_BBOX := (len(bbox) != 4 and len(bbox) != 0):
             raise ProviderQueryError("bbox must be a list of 4 values got {}".format(len(bbox)))
 
         if sortby:
