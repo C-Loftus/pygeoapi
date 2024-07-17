@@ -164,11 +164,12 @@ def gpkg_config():
         'id_field': 'HUC2',
     }
 
+# Make sure the way we are filtering the dataframe works in general
 def test_intersection():
     gdf = gpd.read_file(hu02_path)
     gdf = gdf[gdf['HUC2'] == '01']
     
-    minx, miny, maxx, maxy =  -73.0, 40.0, -71.0, 42.0
+    minx, miny, maxx, maxy =  -70.5, 43.0, -70.0, 43.3
     polygon = shapely.geometry.Polygon([(minx, miny), (minx, maxy), (maxx, maxy), (maxx, miny)])
     huc_range : shapely.geometry.MultiPolygon = gdf["geometry"].iloc[0]
 
@@ -176,7 +177,13 @@ def test_intersection():
     assert isinstance(polygon, shapely.geometry.Polygon)
     assert shapely.intersects(polygon, huc_range) == True
 
-def test_gpkg_query(gpkg_config):
+    gdf = gpd.read_file(hu02_path)
+    box = shapely.box(minx, miny, maxx, maxy)
+    gdf = gdf[gdf["geometry"].intersects(box)]
+
+    assert len(gdf) == 1
+
+def test_gpkg_bbox_query(gpkg_config):
     p = GeoPandasProvider(gpkg_config)
 
     results = p.query(limit=1)
@@ -195,7 +202,55 @@ def test_gpkg_query(gpkg_config):
     results = p.query(bbox=(0, 0, 0, 0), properties=[('uri', 'https://geoconnex.us/ref/hu02/07')])
     assert len(results['features']) == 0
 
-    results = p.query(bbox=(-180, -90, -180, 90))
+    # Should intersect with New England
+    results = p.query(bbox=( -70.5, 43.0, -70.0, 43.3))
+    assert len(results['features']) == 1
+    assert results['features'][0]['id'] == '01'
+
+    # Should intersect with Midatlantic and New England
+    results = p.query(bbox=(-74.881, 40.566, -71.249, 41.27))
+    assert len(results['features']) == 2
+    assert results['features'][0]['id'] == '01'
+    assert results['features'][1]['id'] == '02'
+
+
+def test_gpkg_date_query(gpkg_config):
+    p = GeoPandasProvider(gpkg_config)
+
+    results = p.query(datetime_='2019-10-10')
+    assert len(results['features']) == 1
+    assert results['features'][0]['properties']['LOADDATE'] == '2019-10-10 20:08:56+00:00'
+
+    results = p.query(datetime_='../1900-09-18T17:34:02.666+00:00')
+    assert len(results['features']) == 0
+    
+    results = p.query(datetime_='2900-09-18/..')
+    assert len(results['features']) == 0
+
+    results = p.query(datetime_='2016-09-22')
     assert len(results['features']) == 1
 
+    results = p.query(datetime_='2016-09-22/2016-11-23')
+    assert len(results['features']) == 2
+    assert results['features'][0]['properties']['LOADDATE'] == '2016-10-11 21:37:03+00:00'
+    assert results['features'][1]['properties']['LOADDATE'] == '2016-09-22 06:01:28+00:00'
 
+    results = p.query(datetime_='2000-01-01T00:00:00Z/2016-11-23')
+    assert len(results['features']) == 2
+    assert results['features'][0]['properties']['LOADDATE'] == '2016-10-11 21:37:03+00:00'
+    assert results['features'][1]['properties']['LOADDATE'] == '2016-09-22 06:01:28+00:00'
+
+    results = p.query(datetime_='2016')
+    assert len(results['features']) == 2
+    assert results['features'][0]['properties']['LOADDATE'] == '2016-10-11 21:37:03+00:00'
+    assert results['features'][1]['properties']['LOADDATE'] == '2016-09-22 06:01:28+00:00'
+
+def test_gpkg_sort_query(gpkg_config):
+    p = GeoPandasProvider(gpkg_config)
+
+    results = p.query(sortby=[{'property': 'LOADDATE', 'order': '-'}])
+    for f in results['features']:
+        print(f['id'], f['type'], f['properties']['LOADDATE'])
+    # assert len(results['features']) == len(p._data)
+    # assert results['features'][0]['properties']['LOADDATE'] == '2016-09-22 06:01:28+00:00'
+    
