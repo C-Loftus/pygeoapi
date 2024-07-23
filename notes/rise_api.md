@@ -1,5 +1,39 @@
-# Primary Endpoints
+# [RISE API](https://data.usbr.gov/rise-api) Overview
 
+There are a series of [primary endpoints](#primary-endpoints). Then there are managed vocabularies which are essentially helpers and enumerate the data contained within other primary endpoints. 
+
+Finally there are a list of datatypes that describe the dataformat and mimic the layout of the underlying table.
+
+## Primary Endpoints
+
+- CatalogItem
+- CatalogRecord
+- Location
+- Parameter
+- Result
+
+## Managed Vocabularies
+
+- CatalogThemeType
+- GenerationEffort
+- ItemStructure
+- LocationType
+- ModelName
+- ModelRun
+- ModelRunMember
+- ParameterGroup
+- ReclamationRegion
+- State
+- SubTheme
+- UnifiedRegion
+
+## Layout of the underlying data tables
+
+From a first pass, the underlying data tables seem to map closely to the data that is output. The main differences are associated with naming conventions where the table may have a primary key named `xID` whereas the data may output it as `/x/id` and have `id` as the identifier. Additionally, items in the database are called CatalogItems in the API.
+
+Some of the information regarding entityID and ownerID is not exposed publicly, presumably for privacy reasons (i.e. it includes the email of whoever maintains the data). Other info not exposed publicly include elements in the item table about the file path for metadata or some of the more specific data regarding where the item is published.
+
+## Data Type Layout
 
 CatalogRecord contains multiple CatalogItems. 
 CatalogItems are associated with one or more locations and parameters. 
@@ -10,25 +44,57 @@ CatalogItems contain a pointer back to the CatalogRecord
 A CatalogRecord is created from a generationEffort. 
 Locations contain geometric data.
 Results are not linked to any other endpoint and are queried independently. 
-Results output a location but it is a one way link. Locations do not link to results.
+Results output a location but it is a one way link. Locations do not directly link to results but you can get to a result by linking back to the catalogItem.
+
+Each result is associated with a modelRunMemberId as well as a modeRunID. Each modelRunMember outputs a modelRunId as well as an ID. Confusingly, the modelRun has both an id and an itemId. However, the ID of the modelRun is how a result can be linked to a parameter and a location.
+
+It is a bit unclear if the ID of the modelRun is the same as the modelRunID response.
+
+It is a bit unclear if information in the model table solely corresponds to hypothetical data.
 
 ```mermaid
 graph TD;
+    CatalogRecord --> GenerationEffort;
     CatalogRecord --> CatalogItem;
+    CatalogRecord --> Location;
+
     CatalogItem --> Location;
     CatalogItem --> Parameter;
+    CatalogItem --> isModeled
+    CatalogItem --> modelName;
+    CatalogItem --> modelRuns;
+    CatalogItem --> parameterID;
+    CatalogItem --> Matrix;
+    CatalogItem --> CatalogRecord;
+    
+    Result --> parameterID;
+    Result --> Location;
+    Result --> modelRunMemberID;
+    Result --> modelRunID;
+
+    modelName --> modelRuns;
+    modelRuns --> modelRun;
+    modelRun --> id;
+    modelRunMember --> modelRunID;
+    modelRunMember --> modelRun;
     Parameter --> ParameterGroup;
+
     Parameter --> Unit;
     Parameter --> Timestep;
     Parameter --> Description;
     ParameterGroup --> Parameter;
-    CatalogItem --> CatalogRecord;
-    CatalogRecord --> GenerationEffort;
-    Location --> GeometricData;
-    GenerationEffort;
-    Result --> Location;
+    ParameterGroup --> CatalogItem;
 
-```
+    Location --> GeometricData;
+    Location --> modelRuns;
+    Location --> VerticalDatum;
+    Location --> HorizontalDatum;
+    Location --> State;
+    Location --> UnifiedRegion;
+    Location --> CatalogItem;
+
+    modelRunID --> id;
+``` -->
 
 ## CatalogItem
 
@@ -337,34 +403,12 @@ A generationEffort is essentially some sort of project with associated funding.
 }
 ```
 
-## HorizontalDatum
-## ItemDisclaimer
-## ItemStructure
-## ItemType
-
 ## LocationGeometry
 
   - Straightforward, just the geometric point
   - defines the data format in the locationCoordinates
 
-## LocationTagType
-## LocationType
-## Matrix
-## MetadataStandard
-## ModelName
-## ModelRun
-## ModelRunMember
-## ParameterGroup
-## ParameterTimestep
-## ParameterTransformation
-## ParameterUnit
-## ReclamationRegion
-## SpatialGeometry
-## SpatialResolution
-## SpatialTransformation
-## State
-## SubTheme
-## Timezone
-## UnifiedRegion
-## UpdateFrequency
-## VerticalDatum 
+
+## Other Datatypes
+
+There are a series of other datatypes that are defined in the API and are returned from the other endpoints. Generally, these are less important, don't link to other info, and just describe the specifics of the data formats that are returned.
