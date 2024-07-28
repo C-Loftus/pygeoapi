@@ -77,7 +77,7 @@ ADMIN_BLUEPRINT = Blueprint('admin', __name__, static_folder=STATIC_FOLDER)
 if CONFIG['server'].get('cors', False):
     try:
         from flask_cors import CORS
-        CORS(APP)
+        CORS(APP, CORS_EXPOSE_HEADERS=['*'])
     except ModuleNotFoundError:
         print('Python package flask-cors required for CORS support')
 
@@ -327,7 +327,7 @@ def collection_coverage(collection_id):
     """
 
     return execute_from_flask(coverages_api.get_collection_coverage, request,
-                              collection_id)
+                              collection_id, skip_valid_check=True)
 
 
 @BLUEPRINT.route('/collections/<path:collection_id>/tiles')
