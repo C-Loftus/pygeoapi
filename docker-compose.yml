@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  pygeoapi:
+    build: .
+    container_name: pygeoapi
+    ports:
+      - "5000:80"
+    volumes:
+      - ./pygeoapi:/pygeoapi/pygeoapi  # Map the pygeoapi directory into /code/pygeoapi in the container
+      - ./tests:/pygeoapi/tests         # Map the test directory into /code/test in the container
