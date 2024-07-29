@@ -162,7 +162,7 @@ def describe_processes(api: API, request: APIRequest,
                 'type': FORMAT_TYPES[F_HTML],
                 'rel': 'http://www.opengis.net/def/rel/ogc/1.0/job-list',
                 'href': f'{jobs_url}?f={F_HTML}',
-                'title': l10n.translate('Jobs for this process as HTML', request.locale),  # noqa
+                'title': l10n.translate('Jobs list as HTML', request.locale),  # noqa
                 'hreflang': api.default_locale
             }
             p2['links'].append(link)
@@ -171,7 +171,7 @@ def describe_processes(api: API, request: APIRequest,
                 'type': FORMAT_TYPES[F_JSON],
                 'rel': 'http://www.opengis.net/def/rel/ogc/1.0/job-list',
                 'href': f'{jobs_url}?f={F_JSON}',
-                'title': l10n.translate('Jobs for this process as HTML', request.locale),  # noqa
+                'title': l10n.translate('Jobs list as JSON', request.locale),  # noqa
                 'hreflang': api.default_locale
             }
             p2['links'].append(link)
@@ -379,6 +379,8 @@ def execute_process(api: API, request: APIRequest,
     requested_outputs = data.get('outputs')
     LOGGER.debug(f'outputs: {requested_outputs}')
 
+    requested_response = data.get('response', 'raw')
+
     subscriber = None
     subscriber_dict = data.get('subscriber')
     if subscriber_dict:
@@ -407,10 +409,14 @@ def execute_process(api: API, request: APIRequest,
         result = api.manager.execute_process(
             process_id, data_dict, execution_mode=execution_mode,
             requested_outputs=requested_outputs,
-            subscriber=subscriber)
+            subscriber=subscriber,
+            requested_response=requested_response)
         job_id, mime_type, outputs, status, additional_headers = result
         headers.update(additional_headers or {})
-        headers['Location'] = f'{api.base_url}/jobs/{job_id}'
+
+        if api.manager.is_async:
+            headers['Location'] = f'{api.base_url}/jobs/{job_id}'
+
     except ProcessorExecuteError as err:
         return api.get_exception(
             err.http_status_code, headers,
@@ -420,11 +426,11 @@ def execute_process(api: API, request: APIRequest,
     if status == JobStatus.failed:
         response = outputs
 
-    if data.get('response', 'raw') == 'raw':
+    if requested_response == 'raw':
         headers['Content-Type'] = mime_type
         response = outputs
     elif status not in (JobStatus.failed, JobStatus.accepted):
-        response['outputs'] = [outputs]
+        response = outputs
 
     if status == JobStatus.accepted:
         http_status = HTTPStatus.CREATED
@@ -433,7 +439,7 @@ def execute_process(api: API, request: APIRequest,
     else:
         http_status = HTTPStatus.OK
 
-    if mime_type == 'application/json':
+    if mime_type == 'application/json' or requested_response == 'document':
         response2 = to_json(response, api.pretty_print)
     else:
         response2 = response
