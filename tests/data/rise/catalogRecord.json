@@ -1,0 +1,59 @@
+{
+    "data": {
+      "id": "/rise/api/catalog-record/8025",
+      "type": "CatalogRecord",
+      "attributes": {
+        "_id": 8025,
+        "recordTitle": "Data and Report from S&T Project 20061: Ultrasonic Transducer Field Test for Quagga Mussel Settlement Control",
+        "recordDescription": "The goal of this study was to investigate if commercially available ultrasound transducers can be used for invasive dreissenid mussel settlement control on submerged infrastructure such as intakes, gates, screens and trashracks. Ultrasound transducers designed for algae control were deployed at two locations at Lake Powell and the accumulation of invasive mussel settlement, algae species, and overall biofouling was observed within and outside of the range of the transducers over a one-year period. The ultrasound transducer tested in this study did not have an obvious impact on mussel settlement, algae species composition, or overall biofouling. The data files include counts of quagga mussels settled on plates, the size of a sub-set of mussels, the dry-weight of all biofouling organisms and data obtained from metabarcoding analysis of algae species. ",
+        "catalogStatusId": 1,
+        "metadataFilePath": "rise/catalog-record/metadata/metadata_rise_record_8025.xml",
+        "metadataStandard": {
+          "_id": "ISO",
+          "definition": "International Standards Organization (ISO) 19115-1:2014 metadata content standard, and ISO 19139:2007 metadata implementation standard",
+          "createDate": "2018-11-20T13:25:52+00:00"
+        },
+        "createDate": "2024-03-27T20:43:12+00:00",
+        "updateDate": "2024-03-29T15:52:11+00:00",
+        "programNames": [
+          "Science and Technology Program"
+        ],
+        "generationEffort": "S&T Project 20061: Ultrasonic Transducer Field Test for Quagga Mussel Settlement Control",
+        "generationEffortId": 399,
+        "subTheme": {
+          "_id": 49,
+          "subTheme": "Invasive Species Control",
+          "definition": "Related to the prevention, detection, and/or eradication of invasive species.",
+          "createDate": "2021-09-30T21:11:35+00:00"
+        },
+        "tags": [
+          "Quagga/Zebra Mussels",
+          "Settlement Control",
+          "Ultrasound"
+        ],
+        "themes": [
+          "Environmental"
+        ]
+      },
+      "relationships": {
+        "location": {
+          "data": {
+            "type": "Location",
+            "id": "/rise/api/location/6902"
+          }
+        },
+        "catalogItems": {
+          "data": [
+            {
+              "type": "CatalogItem",
+              "id": "/rise/api/catalog-item/128632"
+            },
+            {
+              "type": "CatalogItem",
+              "id": "/rise/api/catalog-item/128633"
+            }
+          ]
+        }
+      }
+    }
+  }

@@ -1,0 +1,78 @@
+{
+    "data": {
+      "id": "/rise/api/catalog-item/128633",
+      "type": "CatalogItem",
+      "attributes": {
+        "_id": 128633,
+        "itemTitle": "S&T Project 20061 Ultrasound Settlement Data",
+        "itemDescription": "The data files contain the mussel settlement, biofilm dry weight, and metabarcoding data (including DNA sequencing methods performed by Jonah Ventures, sample metadata, amplified sequence variant (ASV) counts by sample, full taxonomic assignments performed by Jonah Ventures, ASV sequences and summary taxonomic data) results for the final report ST-2024-20061-01: Ultrasonic Transducer Field Test for Quagga Mussel Settlement Control.\r\n\r\nThe files include data that was collected from settlement plates installed at Lake Powell to compare mussel, algae, and overall biofouling within and outside of the range of ultrasound transducers. Ultrasound units were installed near Glen Canyon Dam (at the buoy line) and at the stateline breakwater at Lake Powell. The files include counts of quagga mussels settled on plates, the size of a sub-set of mussels, the dry weight of all biofouling organisms and data obtained from metabarcoding analysis of algae species. The data was used to prepare graphs that were included in the final report.",
+        "itemRecordStatusId": 1,
+        "isModeled": false,
+        "hasProfile": false,
+        "disclaimer": "The findings and conclusions of this work are those of the author(s) and do not necessarily represent the views of the Bureau of Reclamation.",
+        "sourceCode": null,
+        "locationSourceCode": null,
+        "externalDataUrl": null,
+        "parameterSourceCode": null,
+        "modelNameSourceCode": null,
+        "temporalStartDate": null,
+        "temporalEndDate": null,
+        "spatialShortDescription": null,
+        "publicationAuthor": "Sherri F. Pucherelli, Yale J. Passamaneck",
+        "publicationEditor": null,
+        "publicationPublisher": "Bureau of Reclamation",
+        "publicationPublisherLocation": "Denver, CO, USA",
+        "publicationFirstPublicationDate": "2024-03-31T15:52:20+00:00",
+        "publicationPeriodicalName": null,
+        "publicationSerialNumber": null,
+        "publicationDoi": null,
+        "publicationVolume": null,
+        "publicationIssue": null,
+        "publicationSection": null,
+        "publicationStartPage": null,
+        "publicationEndPage": null,
+        "createDate": "2024-03-27T21:40:35+00:00",
+        "itemType": {
+          "_id": "DATA",
+          "definition": "Data file",
+          "createDate": "2018-11-28T14:19:59+00:00"
+        },
+        "matrix": {
+          "_id": 61,
+          "matrix": "Biofouling organisms",
+          "definition": "species that settle and attahach to surfaces including algae, quagga mussels, colonial hydroid",
+          "createDate": "2024-03-27T21:34:07+00:00"
+        },
+        "spatialGeometry": null,
+        "spatialResolution": null,
+        "spatialTransformation": null,
+        "spatialOpenDataURL": null,
+        "metadataFilePath": "https://data.usbr.gov/rise/content-rise-public/rise/catalog-item/metadata/metadata_rise_item_128633.xml",
+        "binaryFilePath": "https://data.usbr.gov/rise/content-rise-public/rise/catalog-item/binary/Ultrasound data.zip",
+        "updateFrequency": {
+          "_id": 14,
+          "updatefrequency": "not planned",
+          "definition": "there are no plans to update the data",
+          "createDate": "2018-11-14T15:17:58+00:00"
+        },
+        "updateDate": "2024-03-29T15:52:19+00:00",
+        "verticalDatum": null,
+        "dataStructure": "Uploaded file(s)",
+        "itemStructureId": 3,
+        "parameterGroup": null,
+        "parameterId": null,
+        "parameterName": null,
+        "parameterUnit": null,
+        "parameterTimestep": null,
+        "parameterTransformation": null
+      },
+      "relationships": {
+        "catalogRecord": {
+          "data": {
+            "type": "CatalogRecord",
+            "id": "/rise/api/catalog-record/8025"
+          }
+        }
+      }
+    }
+  }

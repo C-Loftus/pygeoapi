@@ -65,7 +65,7 @@ def test_location_parameterName(config):
 
     # Test to make sure we are returning the proper parameters for the location
     locationResponse = requests.get(RiseEDRProvider.API + "location/1", headers= {'accept': 'application/vnd.api+json'}).json()
-    params = p._get_parameters(locationResponse["data"]["relationships"]["catalogItems"])
+    params = p._get_parameters_from_location(locationResponse)
     assert 'Lake/Reservoir Storage' in params
 
 def test_location_datetime(config):
