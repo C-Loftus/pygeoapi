@@ -6,13 +6,14 @@ class EDRQuery(TypedDict):
 
 
 class RiseCatalogItems(TypedDict):
-    data: list[dict[Literal["type"]: str, Literal["id"]: str]]
+    data: list[dict[Literal["type"] : str, Literal["id"] : str]]
 
 
 class RiseLocationDatapoint(TypedDict):
-    relationships: dict[Literal["catalogItems"]:RiseCatalogItems]
-    id:  str
+    relationships: dict[Literal["catalogItems"] : RiseCatalogItems]
+    id: str
     type: Literal["Location"]
+
 
 class RiseLocationResponse(TypedDict):
     links: dict[
@@ -35,7 +36,7 @@ class EDRResponse(TypedDict):
             Literal["id"] : str,
             Literal["properties"] : dict,
         ],
-        Literal["geometry"] : dict,
+        Literal["geometry"] : dict,  # type: ignore
     ]
 
 

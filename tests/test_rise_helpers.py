@@ -1,12 +1,13 @@
 import json
 from pygeoapi.provider.rise_edr_helpers import (
-    Location,
+    LocationHelper,
     fetch_url_group,
-    flatten,
+    flatten_values,
     fetch_url,
     RISECache,
 )
-from pygeoapi.provider import rise_edr
+
+
 import asyncio
 
 import requests
@@ -16,7 +17,7 @@ import time
 def test_get_catalogItems():
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
-        items = Location.get_catalogItems(data)
+        items = LocationHelper.get_catalogItems(data)
         assert len(items) == 25
 
 
@@ -30,6 +31,14 @@ def test_fetch():
 
     async_resp = asyncio.run(fetch_url(url))
     assert async_resp == resp.json()
+
+
+def test_remove_location():
+    with open("tests/data/rise/location.json") as f:
+        data = json.load(f)
+        dropped = LocationHelper.drop_location(data, 6902)
+        assert len(data["data"]) - 1 == len(dropped["data"])
+        assert dropped["data"][0]["attributes"]["_id"] != 6902
 
 
 def test_fetch_group():
@@ -53,8 +62,11 @@ def test_cache():
     assert remote_res
     network_time = time.time() - start
 
+    assert RISECache.contains(url)
+
     start = time.time()
     RISECache.clear(url)
+    assert not RISECache.contains(url)
     disk_res = asyncio.run(RISECache.get_or_fetch(url))
     assert disk_res
     disk_time = time.time() - start
@@ -66,11 +78,14 @@ def test_cache():
 def test_get_parameters():
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
-        items = Location.get_catalogItems(data)
+        items = LocationHelper.get_catalogItems(data)
         assert len(items) == 25
-        assert len(flatten(items)) == 236
+        assert len(flatten_values(items)) == 236
 
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
-        params = Location.get_parameters(data)
-        assert len(params) == 0
+        locationsToParams = LocationHelper.get_parameters(data)
+        assert len(locationsToParams.keys()) > 0
+        # Test it contains a random catalog item from the location
+        assert RISECache.contains("https://data.usbr.gov/rise/api/catalog-item/128573")
+        assert "Streamflow" in flatten_values(locationsToParams)  # type: ignore

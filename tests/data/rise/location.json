@@ -58,13 +58,13 @@
             "_id": 1,
             "locationGeometry": "area",
             "definition": "a region extending in both x and y directions",
-            "createDate": "2018-10-02T14:30:48+00:00"
+            "createDate": "2018-s-02T14:30:48+00:00"
           },
           "verticalDatum": null,
           "locationTags": [
             {
               "id": 14,
-              "tag": "Lake Powell",
+              "tag": "response Powell",
               "createDate": "2019-10-09T14:29:25+00:00"
             }
           ],

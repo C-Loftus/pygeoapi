@@ -28,12 +28,11 @@
 import datetime
 import logging
 from typing import ClassVar
-import json
 import requests
 
 from pygeoapi.provider.base import ProviderQueryError
 from pygeoapi.provider.base_edr import BaseEDRProvider
-from pygeoapi.provider.rise_api_types import LocationQueryOptions, RiseLocationResponse
+from pygeoapi.provider.rise_edr_helpers import LocationHelper
 
 
 LOGGER = logging.getLogger(__name__)
@@ -45,7 +44,7 @@ class RiseEDRProvider(BaseEDRProvider):
     LOCATION_API: ClassVar[str] = "https://data.usbr.gov/rise/api/location"
     BASE_API: ClassVar[str] = "https://data.usbr.gov"
 
-    query_types = []
+    query_types = ["location"]
 
     def __init__(self, provider_def):
         """
@@ -60,14 +59,6 @@ class RiseEDRProvider(BaseEDRProvider):
 
         self.instances = []
 
-    def _param_id_from_name(self, id):
-        pass
-
-    
-     
-    # def _filter_by_location():
-
-
     @BaseEDRProvider.register()
     def location(self, **kwargs):
         """
@@ -81,7 +72,7 @@ class RiseEDRProvider(BaseEDRProvider):
 
         :returns: coverage data as specified format
         """
-        queryOptions: LocationQueryOptions = {}
+        queryOptions = {}
 
         if kwargs.get("locationId"):
             # If we know the id befor
@@ -90,24 +81,26 @@ class RiseEDRProvider(BaseEDRProvider):
             queryOptions["crs"] = kwargs.get("crs")
 
         response = requests.get(
-            RiseEDRProvider.LOCATION_API, headers={"accept": "application/vnd.api+json"}, params=queryOptions
+            RiseEDRProvider.LOCATION_API,
+            headers={"accept": "application/vnd.api+json"},
+            params=queryOptions,
         )
 
         if not response.ok:
-            raise ProviderQueryError
+            raise ProviderQueryError(response.text)
         else:
-            # get it into standard json format temporarily so we can filter the same way regardless of final out format
-            response: RiseLocationResponse = response.json() 
-
-        if parametersToQueryBy := kwargs.get("parameterName"):
-            params = self._get_parameters_from_location(response)
-
-            for name in parametersToQueryBy:
-                if name not in params:
-                    response = None
+            response = response.json()
 
         if kwargs.get("datetime"):
-            tmp_req = self._filter_by_date(response, kwargs.get("datetime"))
+            query_date: str = kwargs.get("datetime")
+            response = LocationHelper.filter_by_date(response, query_date)
+
+        parametersToQueryBy = kwargs.get("parameterName")
+        if parametersToQueryBy:
+            locationsToParams = LocationHelper.get_parameters(response)
+            for location, paramList in locationsToParams.items():
+                if parametersToQueryBy not in paramList:
+                    response = LocationHelper.drop_location(response, int(location))
 
         match kwargs.get("f"):
             case "json" | _:

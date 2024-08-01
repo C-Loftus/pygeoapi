@@ -31,6 +31,7 @@ import datetime
 import json
 
 import pytest
+from pytest import param
 import requests
 import shapely
 
@@ -38,44 +39,49 @@ from pygeoapi.provider.base import ProviderItemNotFoundError
 
 from pygeoapi.provider.rise_edr import RiseEDRProvider
 
+
 @pytest.fixture()
 def config():
     return {
-        'name': 'gpkg',
-        'type': 'feature',
-        'data': 'tests/data/hu02.gpkg',
-        'id_field': 'HUC2',
+        "name": "gpkg",
+        "type": "feature",
+        "data": "tests/data/hu02.gpkg",
+        "id_field": "HUC2",
     }
 
 
 def test_location_locationId(config):
     p = RiseEDRProvider(config)
     out = p.location(locationId=6902)
-    assert out['links']['self'] == "/rise/api/location?id=6902"
-    assert len(out['data']) == 1
+    assert out["links"]["self"] == "/rise/api/location?id=6902"
+    assert len(out["data"]) == 1
     out = p.location(locationId=1)
-    assert out['links']['self'] == "/rise/api/location?id=1"
-    assert len(out['data']) == 1
+    assert out["links"]["self"] == "/rise/api/location?id=1"
+    assert len(out["data"]) == 1
 
 
 def test_location_parameterName(config):
     p = RiseEDRProvider(config)
-    out = p.location(parameterName='DUMMY-PARAM')
-    assert out is None
+    out = p.location(parameterName="DUMMY-PARAM")
+    assert len(out["data"]) == 0
 
-    # Test to make sure we are returning the proper parameters for the location
-    locationResponse = requests.get(RiseEDRProvider.API + "location/1", headers= {'accept': 'application/vnd.api+json'}).json()
-    params = p._get_parameters_from_location(locationResponse)
-    assert 'Lake/Reservoir Storage' in params
+    out = p.location(parameterName="Streamflow")
+    assert out["data"][0]["id"] == "/rise/api/location/3658"
+
 
 def test_location_datetime(config):
-    pass
+    p = RiseEDRProvider(config)
+    out = p.location(datetime="2024-03-29T15:49:57+00:00")
+    assert out["data"][0]["id"] == "/rise/api/location/6902"
+
 
 def test_item():
     pass
 
+
 def test_area():
     pass
+
 
 def test_cube():
     pass

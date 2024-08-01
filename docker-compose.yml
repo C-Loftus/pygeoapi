@@ -10,4 +10,3 @@ services:
       - ./pygeoapi:/pygeoapi/pygeoapi  # Map the pygeoapi directory into /code/pygeoapi in the container
       - ./tests:/pygeoapi/tests         # Map the test directory into /code/test in the container
       - ./.devcontainer:/pygeoapi/.devcontainer
-      - ./risedb.db:/pygeoapi/risedb.db
