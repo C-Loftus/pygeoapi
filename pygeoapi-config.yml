@@ -43,8 +43,8 @@ server:
     pretty_print: true
     limit: 10
     # templates:
-      # path: /path/to/Jinja2/templates
-      # static: /path/to/static/folder # css/js/img
+    # path: /path/to/Jinja2/templates
+    # static: /path/to/static/folder # css/js/img
     map:
         url: https://tile.openstreetmap.org/{z}/{x}/{y}.png
         attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
@@ -52,8 +52,8 @@ server:
 #        name: TinyDB
 #        connection: /tmp/pygeoapi-process-manager.db
 #        output_dir: /tmp/
-    # ogc_schemas_location: /opt/schemas.opengis.net
-    
+# ogc_schemas_location: /opt/schemas.opengis.net
+
 logging:
     level: ERROR
     #logfile: /tmp/pygeoapi.log
@@ -127,7 +127,7 @@ resources:
               hreflang: en-US
         extents:
             spatial:
-                bbox: [-180,-90,180,90]
+                bbox: [-180, -90, 180, 90]
                 crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
             temporal:
                 begin: 2000-10-30T18:24:39Z
@@ -164,11 +164,11 @@ resources:
               hreflang: en-US
         extents:
             spatial:
-                bbox: [-180,-90,180,90]
+                bbox: [-180, -90, 180, 90]
                 crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
             temporal:
                 begin: 2011-11-11T11:11:11Z
-                end: null  # or empty (either means open ended)
+                end: null # or empty (either means open ended)
         providers:
             - type: feature
               name: GeoJSON
@@ -191,7 +191,7 @@ resources:
               hreflang: en-US
         extents:
             spatial:
-                bbox: [-180,-90,180,90]
+                bbox: [-180, -90, 180, 90]
                 crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
         providers:
             - type: map
@@ -201,8 +201,8 @@ resources:
                   layer: world_latlong
                   style: default
               format:
-                    name: png
-                    mimetype: image/png
+                  name: png
+                  mimetype: image/png
 
     gdps-temperature:
         type: collection
@@ -213,7 +213,7 @@ resources:
             - global
         extents:
             spatial:
-                bbox: [-180,-90,180,90]
+                bbox: [-180, -90, 180, 90]
                 crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
         links:
             - type: text/html
@@ -246,7 +246,7 @@ resources:
               hreflang: en-US
         extents:
             spatial:
-                bbox: [-180,-90,180,90]
+                bbox: [-180, -90, 180, 90]
                 crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
         providers:
             - type: stac
@@ -288,7 +288,7 @@ resources:
               hreflang: fr-CA
         extents:
             spatial:
-                bbox: [-180,-90,180,90]
+                bbox: [-180, -90, 180, 90]
                 crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
         providers:
             - type: record
@@ -317,4 +317,13 @@ resources:
               entity: Datastreams
               time_field: phenomenonTime
               intralink: true
-  
+
+    RISEEDR:
+        type: collection
+        title: SensorThings
+        description: SensorThings
+        keywords:
+            - SensorThings
+        providers:
+            - type: feature
+              name: RiseEDR

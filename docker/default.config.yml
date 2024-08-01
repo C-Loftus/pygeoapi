@@ -511,3 +511,22 @@ resources:
         type: process
         processor:
             name: HelloWorld
+
+
+    RISEEDR:
+        type: collection
+        title: RISE API EDR
+        description: RISE API EDR
+        keywords:
+            - RISE
+        extents:
+            spatial:
+                bbox: [3.37,50.75,7.21,53.47]
+                crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+            temporal:
+                begin:
+                end: null  # or empty
+        providers:
+            - type: EDR
+              name: RiseEDR
+              data: example.com

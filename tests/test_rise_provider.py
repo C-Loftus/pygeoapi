@@ -74,6 +74,9 @@ def test_location_datetime(config):
     out = p.location(datetime="2024-03-29T15:49:57+00:00")
     assert out["data"][0]["id"] == "/rise/api/location/6902"
 
+    out = p.location(datetime="2024-03-29/..")
+    assert out["data"][0]["id"] == "/rise/api/location/6902"
+
 
 def test_item():
     pass

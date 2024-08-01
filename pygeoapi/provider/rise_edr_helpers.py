@@ -166,7 +166,7 @@ class LocationHelper:
         """
         Filter by date
         """
-        if not location_response["data"][0]["attributes"]["last"]:
+        if not location_response["data"][0]["attributes"]:
             raise ProviderQueryError("Can't filter by date")
 
         filteredResp = location_response.copy()
