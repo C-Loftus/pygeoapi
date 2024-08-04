@@ -2,6 +2,8 @@ import datetime
 import json
 import logging
 from typing import ClassVar, Protocol
+
+from h11 import Data
 from pygeoapi.provider.base import ProviderQueryError
 import asyncio
 import aiohttp
@@ -26,12 +28,9 @@ async def fetch_url_group(
     results: dict[str, dict | Exception] = {url: {} for url in urls}
 
     for coroutine, url in zip(asyncio.as_completed(tasks), urls):
-        try:
-            result = await coroutine
-            results[url] = result
-            RISECache.set(url, result)
-        except Exception as err:
-            results[url] = err
+        result = await coroutine
+        results[url] = result
+        RISECache.set(url, result)
 
     return results
 
@@ -135,10 +134,15 @@ class LocationHelper:
         for location, catalogItems in locationsToCatalogItems.items():
             urlItemMapper = asyncio.run(RISECache.get_or_fetch_group(catalogItems))
 
-            allParams = [
-                CatalogItem.get_parameter(item)  # type: ignore
-                for item in urlItemMapper.values()
-            ]
+            try:
+                allParams = [
+                    CatalogItem.get_parameter(item)  # type: ignore seems to be an error with pylance
+                    for item in urlItemMapper.values()
+                ]
+            except KeyError:
+                with open("tests/data/rise/debug.json", "w") as f:
+                    json.dump(urlItemMapper, f)
+                raise ProviderQueryError("Could not get parameters")
 
             allParams = list(filter(lambda x: x is not None, allParams))
 
@@ -240,4 +244,5 @@ class CatalogItem:
             if data["data"]["attributes"]["parameterName"] != "null"
             else None
         )
+   
         return parameterName

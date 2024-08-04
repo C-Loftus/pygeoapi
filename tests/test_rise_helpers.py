@@ -53,6 +53,22 @@ def test_fetch_group():
     assert None not in resp
 
 
+
+def test_get_parameters():
+    with open("tests/data/rise/location.json") as f:
+        data = json.load(f)
+        items = LocationHelper.get_catalogItems(data)
+        assert len(items) == 25
+        assert len(flatten_values(items)) == 236
+
+    with open("tests/data/rise/location.json") as f:
+        data = json.load(f)
+        locationsToParams = LocationHelper.get_parameters(data)
+        assert len(locationsToParams.keys()) > 0
+        # Test it contains a random catalog item from the location
+        assert RISECache.contains("https://data.usbr.gov/rise/api/catalog-item/128573")
+        assert "Streamflow" in flatten_values(locationsToParams)  # type: ignore
+
 def test_cache():
     url = "https://data.usbr.gov/rise/api/catalog-item/128562"
 
@@ -73,19 +89,3 @@ def test_cache():
 
     assert disk_time < network_time
     assert remote_res == disk_res
-
-
-def test_get_parameters():
-    with open("tests/data/rise/location.json") as f:
-        data = json.load(f)
-        items = LocationHelper.get_catalogItems(data)
-        assert len(items) == 25
-        assert len(flatten_values(items)) == 236
-
-    with open("tests/data/rise/location.json") as f:
-        data = json.load(f)
-        locationsToParams = LocationHelper.get_parameters(data)
-        assert len(locationsToParams.keys()) > 0
-        # Test it contains a random catalog item from the location
-        assert RISECache.contains("https://data.usbr.gov/rise/api/catalog-item/128573")
-        assert "Streamflow" in flatten_values(locationsToParams)  # type: ignore

@@ -11,3 +11,4 @@ services:
       - ./tests:/pygeoapi/tests         # Map the test directory into /code/test in the container
       - ./.devcontainer:/pygeoapi/.devcontainer
       - ./pygeoapi-config.yml:/pygeoapi/pygeoapi-config.yml
+      - ./notes:/pygeoapi/notes
