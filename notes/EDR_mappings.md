@@ -58,9 +58,9 @@ Each location query that requires a parameter filter usually ends up being ~5s, 
 - ~3s to block until the last catalog item query (all are done independently, but one slow query slows everything down)
 - 2s + 3s = ~5s in total to resolve the query
 
-The number of queries is O(N) on the number of catalog items. 
-- To generalize this, any time we want to filter on a value not included in the endpoint, our time complexity ends up being
-- O(1) + O(N) 
+The number of queries and the length of time to resolve it is O(N) where N is the number of catalog items. 
+- To generalize this, any time we want to filter on a value not included in the endpoint, our time complexity ends up being O(1) + O(N)
+    - We have to wait for one query to the `/location` endpoint, then once that is done, we can query all the catalog items within it. 
     - _(Repeat extra O(N) if we have to join at multiple layers)_
 
 
@@ -98,22 +98,23 @@ Latency is variable and not well defined without caching. In [the query statisti
 
 Caching would reduce this but add more complexity.
 
-## Joining multiple API calls deep
+### Joining multiple API calls deep
 
 So far I have not encountered any EDR queries that require fetching json twice. i.e. `fetch json -> get key -> fetch json -> get key` chaining.
 
-However, if we have to supported nested joins like this it adds complexlity with error handling. 
+However, if we have to supported nested joins like this it adds complexlity with error handling. Each fetch we need to do requires us to block until the group of URLs are all fetched.
 
 ## Optimization Options
 
 In order to implement EDR within the current schema of the RISE API, we need to join data across API endpoints. However during the process of fetching that data, most queries are independent.  Thus, there are options for optimization
 
 - Fetch data needed for joins in parallel using `async`. 
-    - **Baseline optimization described above**: needed for queries to be usable. 
-    - Requires lots of data to be fetched unnecessarily.
+    - This is the **baseline optimization described above** that is needed for queries to be usable.
+    - This is easy to implement on our end, but not great for backend server performance to send so many requests all at once.
 - Cache the dependent data
     - Greatly reduces latency but adds complexity regarding when to invalidate the local cache with the new upstream data.
-- Change the underlying API to Out put additional data needed for EDR queries
+    - There will be a significant UX difference to the user between queries which are cached and those which are not. 
+- Change the underlying API to output additional data needed for EDR queries
     - This should not require taking anything away, but it may cause the API to output duplicate data or deviate from the current patterns. 
 
 
