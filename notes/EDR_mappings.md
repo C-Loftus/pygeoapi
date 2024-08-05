@@ -26,7 +26,7 @@ graph TD;
     B --> C[Location 1];
     B --> D[Location 2];
     B --> E[Location 3];
-    B --> Z[Location ...250];
+    B --> Z[Location ...N];
     C --> F[List of Catalog Items for Location 1];
     D --> G[List of Catalog Items for Location 2];
     E --> H[List of Catalog Items for Location 3];
@@ -37,7 +37,7 @@ graph TD;
     H --> M[Catalog Item 3A];
     H --> N[Catalog Item 3B];
     H --> O[Catalog Item 3C];
-    H --> W[Catalog Item 3..N];
+    H --> W[Catalog Item 3..M];
 
 ```
 
