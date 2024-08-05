@@ -30,7 +30,7 @@ import logging
 from typing import ClassVar
 import requests
 
-from pygeoapi.provider.base import ProviderQueryError
+from pygeoapi.provider.base import ProviderGenericError, ProviderQueryError
 from pygeoapi.provider.base_edr import BaseEDRProvider
 from pygeoapi.provider.rise_edr_helpers import LocationHelper
 
@@ -43,8 +43,6 @@ class RiseEDRProvider(BaseEDRProvider):
 
     LOCATION_API: ClassVar[str] = "https://data.usbr.gov/rise/api/location"
     BASE_API: ClassVar[str] = "https://data.usbr.gov"
-
-    query_types = ["location"]
 
     def __init__(self, provider_def):
         """
@@ -106,14 +104,26 @@ class RiseEDRProvider(BaseEDRProvider):
             case "json" | _:
                 return response
 
-    def get_query_types(self):
-        """
-        Provide supported query types
+    def get_fields(self):
+        if self._fields:
+            return self._fields
 
-        :returns: `list` of EDR query types
-        """
+        res = requests.get("https://data.usbr.gov/rise/api/parameter", headers={"accept": "application/vnd.api+json"})
 
-        return self.query_types
+        self._fields: dict = {}
+
+        if not res.ok:
+            raise ProviderGenericError(res.text)
+        
+        for item in res.json()["data"]:
+            param = item["attributes"]
+            self._fields[param["_id"]] = {
+                "type": param["parameterUnit"],
+                "title": param["parameterName"],
+                "x-ogc-unit": param["parameterUnit"],
+            }
+
+        return self._fields
 
     def query(self, **kwargs):
         """

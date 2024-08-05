@@ -3,7 +3,6 @@ import json
 import logging
 from typing import ClassVar, Protocol
 
-from h11 import Data
 from pygeoapi.provider.base import ProviderQueryError
 import asyncio
 import aiohttp
