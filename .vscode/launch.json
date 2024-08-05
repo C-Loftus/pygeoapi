@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Python: Webapp",
+            "type": "python",
+            "request": "launch",
+            "python": "/usr/bin/python3",
+            "module": "gunicorn",
+            "gevent": true,
+            "args": [
+                "pygeoapi.flask_app:APP",
+                "--worker-class=gevent",
+                "--bind=127.0.0.1:8080",
+                "--reload",
+            ],
+            "env": {
+                "PYGEOAPI_CONFIG": "local.config.yml",
+                "PYGEOAPI_OPENAPI": "local.openapi.yml"
+            },
+        }
+    ]
+}

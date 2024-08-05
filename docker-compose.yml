@@ -13,3 +13,4 @@ services:
       - ./pygeoapi-config.yml:/pygeoapi/pygeoapi-config.yml
       - ./notes:/pygeoapi/notes
       - ${PWD}/local.config.yml:/pygeoapi/local.config.yml
+      - ./.vscode:/pygeoapi/.vscode

@@ -55,7 +55,7 @@ server:
 # ogc_schemas_location: /opt/schemas.opengis.net
 
 logging:
-    level: ERROR
+    level: DEBUG
     #logfile: /tmp/pygeoapi.log
 
 metadata:
@@ -315,7 +315,7 @@ resources:
                 crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
         providers:
             - type: edr
-              name: pygeoapi.provider.rise_edr.RiseEDRProvider
+              name: RiseEDR
               data: https://data.usbr.gov/
             # - type: feature
             #   name: RiseEDR

@@ -58,7 +58,7 @@ class RiseEDRProvider(BaseEDRProvider):
         self.instances = []
 
     @BaseEDRProvider.register()
-    def location(self, **kwargs):
+    def locations(self, **kwargs):
         """
         Extract data from location
 
@@ -93,7 +93,7 @@ class RiseEDRProvider(BaseEDRProvider):
             query_date: str = kwargs.get("datetime")
             response = LocationHelper.filter_by_date(response, query_date)
 
-        parametersToQueryBy = kwargs.get("parameterName")
+        parametersToQueryBy = kwargs.get("parameter-name")
         if parametersToQueryBy:
             locationsToParams = LocationHelper.get_parameters(response)
             for location, paramList in locationsToParams.items():
@@ -102,19 +102,41 @@ class RiseEDRProvider(BaseEDRProvider):
 
         match kwargs.get("f"):
             case "json" | _:
-                return response
+                covjson = {"type": "FeatureCollection", "features": []}
+                for location_feature in response["data"]:
+                    print(location_feature)
+                    feature_as_covjson = {
+                        "type": "Feature",
+                        "id": location_feature["attributes"]["_id"],
+                        "properties": {
+                            "Locations@iot.count": 1,
+                            "Locations": [
+                                {
+                                    "location": location_feature["attributes"][
+                                        "locationCoordinates"
+                                    ]
+                                }
+                            ],
+                        },
+                    }
+                    covjson["features"].append(feature_as_covjson)
+
+                return covjson
 
     def get_fields(self):
         if self._fields:
             return self._fields
 
-        res = requests.get("https://data.usbr.gov/rise/api/parameter", headers={"accept": "application/vnd.api+json"})
+        res = requests.get(
+            "https://data.usbr.gov/rise/api/parameter",
+            headers={"accept": "application/vnd.api+json"},
+        )
 
         self._fields: dict = {}
 
         if not res.ok:
             raise ProviderGenericError(res.text)
-        
+
         for item in res.json()["data"]:
             param = item["attributes"]
             self._fields[param["_id"]] = {
@@ -146,3 +168,6 @@ class RiseEDRProvider(BaseEDRProvider):
             return getattr(self, kwargs.get("query_type"))(**kwargs)
         except AttributeError:
             raise NotImplementedError("Query not implemented!")
+
+    def __repr__(self):
+        return f"<RiseEDRProvider>"
