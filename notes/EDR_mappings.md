@@ -5,7 +5,7 @@ In order for an endpoint to implement EDR, it needs to implement multiple query 
 
 > Note: In this document I am primarily focused on location queries. However, we will also want to implement other query types, probably at least locations, items, area, and cube. 
 > 
-> The challenges with mapping EDR location queries onto RISE are very similar to other types of queries. 
+> The challenges mapping RISE location queries into EDR are similar to the challenges with other types of queries. 
 
 ## Locations Query as an Example EDR Mapping Challenge
 
