@@ -1,6 +1,36 @@
 {
     "configurations": [
         {
+            "name": "Gunicorn",
+            "python": "/usr/bin/python3",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "gunicorn",
+            "env": {
+                "PYGEOAPI_CONFIG": "local.config.yml",
+                "PYGEOAPI_OPENAPI": "local.openapi.yml"
+            },
+            "args": [
+                "pygeoapi.flask_app:APP"
+            ]
+        },
+        {
+            "name": "Pytest",
+            "python": "/usr/bin/python3",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "${file}"
+            ]
+        },
+        // {
+        //     "name": "Python Debugger: Attach using Process Id",
+        //     "type": "debugpy",
+        //     "request": "attach",
+        //     "processId": "${command:pickProcess}"
+        // },
+        {
             "name": "Python: Webapp",
             "type": "python",
             "request": "launch",
@@ -17,6 +47,6 @@
                 "PYGEOAPI_CONFIG": "local.config.yml",
                 "PYGEOAPI_OPENAPI": "local.openapi.yml"
             },
-        }
+        },
     ]
 }

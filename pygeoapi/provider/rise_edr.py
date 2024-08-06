@@ -104,7 +104,6 @@ class RiseEDRProvider(BaseEDRProvider):
             case "json" | _:
                 covjson = {"type": "FeatureCollection", "features": []}
                 for location_feature in response["data"]:
-                    print(location_feature)
                     feature_as_covjson = {
                         "type": "Feature",
                         "id": location_feature["attributes"]["_id"],
@@ -118,6 +117,7 @@ class RiseEDRProvider(BaseEDRProvider):
                                 }
                             ],
                         },
+                        "geometry": location_feature["attributes"]["locationCoordinates"],
                     }
                     covjson["features"].append(feature_as_covjson)
 
@@ -139,7 +139,8 @@ class RiseEDRProvider(BaseEDRProvider):
 
         for item in res.json()["data"]:
             param = item["attributes"]
-            self._fields[param["_id"]] = {
+            # TODO check if this should be a string or a number
+            self._fields[str(param["_id"])] = {
                 "type": param["parameterUnit"],
                 "title": param["parameterName"],
                 "x-ogc-unit": param["parameterUnit"],
@@ -170,4 +171,4 @@ class RiseEDRProvider(BaseEDRProvider):
             raise NotImplementedError("Query not implemented!")
 
     def __repr__(self):
-        return f"<RiseEDRProvider>"
+        return "<RiseEDRProvider>"

@@ -1,7 +1,7 @@
 # EDR Mappings Overview
 
 
-In order for an endpoint to implement EDR, it needs to implement multiple query types. The main challenge is that the current output format of RISE requires joining data across multiple API queries to complete the EDR query.
+In order for an endpoint to implement EDR, it needs to implement multiple query types. The main challenge is that the current output format of RISE requires joining data across multiple API calls to complete the EDR query.
 
 > Note: In this document I am primarily focused on location queries. However, we will also want to implement other query types, probably at least locations, items, area, and cube. 
 > 
@@ -9,20 +9,37 @@ In order for an endpoint to implement EDR, it needs to implement multiple query 
 
 ## Locations Query as an Example EDR Mapping Challenge
 
-To query locations in RISE we use the `/location` endpoint. The `/location` endpoint returns a list of locations. However it does not contain all the info we need to implement the EDR query. 
+To query locations in RISE we use the `/location` endpoint. 
+
+- The `/location` endpoint returns a list of locations.
+- `/location` is paginated. 
+    - Each page maxes out at 100 items.
+    - There are 592 items so we need to fetch 6 times to get all of them before starting to filter.
+    - If one call fails, the call is incomplete since we don't have a location
+
+`/location`, even after merging all pages, does not contain all the info we need to implement the EDR query. 
 
 - The EDR spec expects a location query to be able to be filtered by a `parameter-name` 
     - Thus, we need to get the list of the parameters associated with each location. 
         - parameter names are defined within the `/catalog-item` endpoint
     - We can only get this by fetching the catalog item associated with each location
     - As the result we end up needing to fetch every single catalog item in order to get the list of parameters for each location
-        - This is roughly 250 queries
 
 _`/location` returns a list of locations. Each location returns a list of catalog items. Each catalog item is associated with one `parameterName` which can be potentially null._
 
 ```mermaid
 graph TD;
-    A[/location/] --> B[List of Locations];
+    1[/location Page 1/] --> 8[All Locations];
+    2[/location Page 2/] --> 8[All Locations];
+    3[/location Page 4/] --> 8[All Locations];
+    4[/location Page 4/] --> 8[All Locations];
+    5[/location Page 5/] --> 8[All Locations];
+    6[/location Page 6/] --> 8[All Locations];
+
+    8 --> B[Initially Filtered Locations by datetime etc];
+
+
+
     B --> C[Location 1];
     B --> D[Location 2];
     B --> E[Location 3];
@@ -43,28 +60,39 @@ graph TD;
 
 **How to construct an EDR location query with a `parameter-name` filter**
 
-1. Query `/location`
-2. Send ~250 independent fetch calls; one to each catalog item
-3. Block until the last fetch returns
+1. Query each page in `/location`
+    - We can fetch only 100 items at a time.
+    - We need to do 6 fetches in parallel to get all 592 locations.
+    - Block until the last fetch returns
+2. Join all the `/location` paginated responses into one JSON
+3. Send parallel fetch calls to each catalog item
+4. Block until the last fetch returns
     > NOTE: If one fetch doesn't return, the query is incomplete
-4. Filter the `/location` response by the passed in `parameter-name`
+5. Filter the `/location` response by the passed in `parameter-name`
 
     
 ## Location Query Time Complexity
 
-Each location query that requires a parameter filter usually ends up being ~5s, but sometimes there is unexpected [latency](#latency). In summary it requires:
+Each location query that requires a parameter filter usually ends up being ~6s, but sometimes there is unexpected [latency](#latency). In summary it requires:
 
-- ~2s for location query
-- ~3s to block until the last catalog item query (all are done independently, but one slow query slows everything down)
-- 2s + 3s = ~5s in total to resolve the query
+- ~3s to fetch and merge all the `/location` paginated responses and block until the last one is finished
+- ~3s to fetch and merge all the `/catalog-item` responses and block until the last one is finished
+- 3s + 3s = ~6s in total to resolve the query 
+    - (best case assuming little latency server-side)
 
-The number of queries and the length of time to resolve it is O(N) where N is the number of catalog items. 
-- To generalize this, any time we want to filter on a value not included in the endpoint, our time complexity ends up being O(1) + O(N)
-    - We have to wait for one query to the `/location` endpoint, then once that is done, we can query all the catalog items within it. 
-    - _(Repeat extra O(N) if we have to join at multiple layers)_
-
+Since our fetches are in parallel the biggest time complexity addition comes from the fact we need to fetch in a group then block to merge the responses. Since each group is fetched in parallel, the complexity is not made worse by the number of pages or catalog items (assuming no addition latency server-side).
 
 ## Other Challenges
+
+## High number of requests
+
+In order to complete a query, we need to fetch all the pages of an endpoint. Only once we have all the pages can we resolve the query. Then once we merge the pages, if we are missing parameters, we need to fetch additional info from an endpoint like `/catalog-item`
+
+There are `6973` catalog items. In the worst case, if every one is associated with a location and the user does not apply other filters, we need to fetch all of them in order to determine which parameter is associated with each location.
+
+If one fetch fails, the query is incomplete since we do not have all the information needed. 
+
+Without caching this ends up adding significant load to the server. 
 
 ### Error handling
 
