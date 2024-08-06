@@ -1,7 +1,10 @@
 import datetime
 import json
 import logging
-from typing import ClassVar, Protocol
+import math
+from typing import ClassVar, Literal, Protocol
+
+import requests
 
 from pygeoapi.provider.base import ProviderQueryError
 import asyncio
@@ -10,12 +13,36 @@ from pygeoapi.provider.rise_api_types import RiseLocationResponse
 import shelve
 
 LOGGER = logging.getLogger(__name__)
+HEADERS = {"accept": "application/vnd.api+json"}
+
+
+def merge_pages(pages: dict[str, dict]) -> dict[str, dict]:
+    # Initialize variables to hold the URL and combined data
+    combined_url = None
+    combined_data = None
+
+    # Iterate over the dictionaries
+    for url, content in pages.items():
+        if combined_url is None:
+            combined_url = url  # Set the URL from the first dictionary
+        if combined_data is None:
+            combined_data = content
+        else:
+            data = content.get("data", [])
+            if not data:
+                continue
+
+            combined_data["data"].extend(data)
+
+    # Create the merged dictionary with the combined URL and data
+    merged_dict = {combined_url: combined_data}
+
+    return merged_dict
 
 
 async def fetch_url(url: str) -> dict:
-    headers = {"accept": "application/vnd.api+json"}
-    async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.get(url, headers=headers) as response:
+    async with aiohttp.ClientSession(headers=HEADERS) as session:
+        async with session.get(url, headers=HEADERS) as response:
             return await response.json()
 
 
@@ -91,6 +118,30 @@ class RISECache(Protocol):
         with shelve.open(RISECache.db) as db:
             return url in db
 
+    @staticmethod
+    def get_or_fetch_all_pages(url: str):
+        # max number of items you can query
+        MAX_ITEMS_PER_PAGE = 100
+
+        response = asyncio.run(RISECache.get_or_fetch(url))
+
+        NOT_PAGINATED = "meta" not in response
+        if NOT_PAGINATED:
+            return {url: response}
+
+        total_items = response["meta"]["totalItems"]
+
+        pages_to_complete = math.ceil(total_items / MAX_ITEMS_PER_PAGE)
+
+        urls = [
+            f"{url}?page={page}&itemsPerPage={MAX_ITEMS_PER_PAGE}"
+            for page in range(1, int(pages_to_complete) + 1)
+        ]
+
+        pages = asyncio.run(RISECache.get_or_fetch_group(urls))
+
+        return pages
+
 
 def flatten_values(input: dict[str, list[str]]) -> list[str]:
     output = []
@@ -134,10 +185,14 @@ class LocationHelper:
             urlItemMapper = asyncio.run(RISECache.get_or_fetch_group(catalogItems))
 
             try:
-                allParams = [
-                    CatalogItem.get_parameter(item)  # type: ignore seems to be an error with pylance
-                    for item in urlItemMapper.values()
-                ]
+                allParams = []
+
+                for item in urlItemMapper.values():
+                    if item is not None:
+                        res = CatalogItem.get_parameter(item)
+                        if res is not None:
+                            allParams.append(res["id"])
+
             except KeyError:
                 with open("tests/data/rise/debug.json", "w") as f:
                     json.dump(urlItemMapper, f)
@@ -237,11 +292,12 @@ class LocationHelper:
 
 class CatalogItem:
     @classmethod
-    def get_parameter(cls, data: dict) -> str | None:
-        parameterName = (
-            data["data"]["attributes"]["parameterName"]
-            if data["data"]["attributes"]["parameterName"] != "null"
-            else None
-        )
-   
-        return parameterName
+    def get_parameter(cls, data: dict) -> dict[str, str] | None:
+        try:
+            parameterName = data["data"]["attributes"]["parameterName"]
+            id = data["data"]["attributes"]["parameterId"]
+            # NOTE id is returned as an int but needs to be a string in order to query it
+            return {"id": str(id), "name": parameterName}
+        except KeyError:
+            LOGGER.error(f"Could not find a parameter in {data}")
+            return None

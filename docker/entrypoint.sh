@@ -100,6 +100,7 @@ case ${entry_cmd} in
 				--timeout ${WSGI_WORKER_TIMEOUT} \
 				--name=${CONTAINER_NAME} \
 				--bind ${CONTAINER_HOST}:${CONTAINER_PORT} \
+				--reload \
 				pygeoapi.flask_app:APP
 	  ;;
 	*)

@@ -1,10 +1,14 @@
 import json
+
+from flask import request
 from pygeoapi.provider.rise_edr_helpers import (
     LocationHelper,
+    fetch_all_pages,
     fetch_url_group,
     flatten_values,
     fetch_url,
     RISECache,
+    merge_pages,
 )
 
 
@@ -53,7 +57,6 @@ def test_fetch_group():
     assert None not in resp
 
 
-
 def test_get_parameters():
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
@@ -67,7 +70,63 @@ def test_get_parameters():
         assert len(locationsToParams.keys()) > 0
         # Test it contains a random catalog item from the location
         assert RISECache.contains("https://data.usbr.gov/rise/api/catalog-item/128573")
-        assert "Streamflow" in flatten_values(locationsToParams)  # type: ignore
+        assert "18" in flatten_values(locationsToParams)  # type: ignore
+
+
+def test_fetch_all_pages():
+    url = "https://data.usbr.gov/rise/api/location"
+    pages = fetch_all_pages(url)
+
+    # There are 6 pages so we should get 6 responses
+    assert len(pages) == 6
+    for url, resp in pages.items():
+        # 100 is the max number of items you can query
+        # so we should get 100 items per page
+        assert resp["meta"]["itemsPerPage"] == 100
+
+
+def test_merge_pages():
+    fetched_mock = {
+        "https://data.usbr.gov/rise/api/location2": {
+            "data": [
+                {"id": "https://data.usbr.gov/rise/api/catalog-item/128564"},
+                {"id": "https://data.usbr.gov/rise/api/catalog-item/128565"},
+            ]
+        },
+        "https://data.usbr.gov/rise/api/location1": {
+            "data": [
+                {"id": "https://data.usbr.gov/rise/api/catalog-item/128562"},
+                {"id": "https://data.usbr.gov/rise/api/catalog-item/128563"},
+            ]
+        },
+    }
+
+    merged = merge_pages(fetched_mock)
+    for url, content in merged.items():
+        assert content["data"]
+        assert len(content["data"]) == 4
+        break
+
+
+def test_integration_merge_pages():
+    url = "https://data.usbr.gov/rise/api/location"
+
+    pages = fetch_all_pages(url)
+    merged = merge_pages(pages)
+    for url, content in merged.items():
+        assert content["data"]
+        assert len(content["data"]) == 592
+        break
+
+
+def test_fetch_all_only_fetches_one_if_one_page():
+    url = "https://data.usbr.gov/rise/api/location/1"
+    pages = fetch_all_pages(url)
+    assert len(pages) == 1
+
+    res = requests.get(url, headers={"accept": "application/vnd.api+json"}).json()
+    assert res["data"] == pages[url]["data"]
+
 
 def test_cache():
     url = "https://data.usbr.gov/rise/api/catalog-item/128562"

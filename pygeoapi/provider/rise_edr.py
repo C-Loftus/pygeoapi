@@ -72,9 +72,9 @@ class RiseEDRProvider(BaseEDRProvider):
         """
         queryOptions = {}
 
-        if kwargs.get("locationId"):
+        if kwargs.get("location_id"):
             # If we know the id befor
-            queryOptions["id"] = kwargs.get("locationId")
+            queryOptions["id"] = kwargs.get("location_id")
         if kwargs.get("crs"):
             queryOptions["crs"] = kwargs.get("crs")
 
@@ -89,20 +89,28 @@ class RiseEDRProvider(BaseEDRProvider):
         else:
             response = response.json()
 
-        if kwargs.get("datetime"):
-            query_date: str = kwargs.get("datetime")
+        if kwargs.get("datetime_"):
+            query_date: str = kwargs.get("datetime_")
             response = LocationHelper.filter_by_date(response, query_date)
 
-        parametersToQueryBy = kwargs.get("parameter-name")
+        parametersToQueryBy = kwargs.get("select_properties")
+        LOGGER.error(f"{kwargs}")
+
+        # location 1 has parameter 1721
+
         if parametersToQueryBy:
             locationsToParams = LocationHelper.get_parameters(response)
-            for location, paramList in locationsToParams.items():
-                if parametersToQueryBy not in paramList:
-                    response = LocationHelper.drop_location(response, int(location))
+            for param in parametersToQueryBy:
+                for location, paramList in locationsToParams.items():
+                    if param not in paramList:
+                        print(f"dropping {location}")
+                        response = LocationHelper.drop_location(response, int(location))
+                        print(len(response["data"]))
 
-        match kwargs.get("f"):
+        match kwargs.get("format_"):
             case "json" | _:
-                covjson = {"type": "FeatureCollection", "features": []}
+                features = []
+
                 for location_feature in response["data"]:
                     feature_as_covjson = {
                         "type": "Feature",
@@ -117,18 +125,20 @@ class RiseEDRProvider(BaseEDRProvider):
                                 }
                             ],
                         },
-                        "geometry": location_feature["attributes"]["locationCoordinates"],
+                        "geometry": location_feature["attributes"][
+                            "locationCoordinates"
+                        ],
                     }
-                    covjson["features"].append(feature_as_covjson)
+                    features.append(feature_as_covjson)
 
-                return covjson
+                return {"type": "FeatureCollection", "features": features}
 
     def get_fields(self):
         if self._fields:
             return self._fields
 
         res = requests.get(
-            "https://data.usbr.gov/rise/api/parameter",
+            "https://data.usbr.gov/rise/api/parameter?id=18",
             headers={"accept": "application/vnd.api+json"},
         )
 
