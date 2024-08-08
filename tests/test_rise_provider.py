@@ -96,11 +96,14 @@ def test_location_datetime(config):
         assert False
 
 
+# def test_area():
+#     p = RiseEDRProvider(config)
+
+#     out = p.area()
+#     assert len(out["features"]) > 0
+
+
 def test_item():
-    pass
-
-
-def test_area():
     pass
 
 

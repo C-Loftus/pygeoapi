@@ -1,19 +1,96 @@
+from ast import parse
+from copy import deepcopy
 import datetime
 import json
 import logging
 import math
-from typing import ClassVar, Protocol
+from typing import ClassVar, Optional, Protocol, Tuple
+from numpy import shape
+import shapely.wkt
+from typing_extensions import assert_never
+
+import shapely
 
 from pygeoapi.provider.base import ProviderQueryError
 import asyncio
 import aiohttp
 import shelve
+from enum import Enum, auto
+
 
 LOGGER = logging.getLogger(__name__)
 HEADERS = {"accept": "application/vnd.api+json"}
 
 JsonPayload = dict
 Url = str
+
+
+class ZType(Enum):
+    SINGLE = auto()
+    # Every value between two values
+    RANGE = auto()
+    # An enumerated list that the value must be in
+    ENUMERATED_LIST = auto()
+
+
+def parse_z(z: str) -> Optional[Tuple[ZType, list[int]]]:
+    if not z:
+        return None
+    if z.startswith("R") and len(z.split("/")) == 3:
+        z = z.replace("R", "")
+        interval = z.split("/")
+        if len(interval) != 3:
+            raise ProviderQueryError(f"Invalid z interval: {z}")
+        steps = int(interval[0])
+        start = int(interval[1])
+        step_len = int(interval[2])
+        return (
+            ZType.ENUMERATED_LIST,
+            list(range(start, start + (steps * step_len), step_len)),
+        )
+    elif "/" in z and len(z.split("/")) == 2:
+        start = int(z.split("/")[0])
+        stop = int(z.split("/")[1])
+
+        return (ZType.RANGE, [start, stop])
+    elif "," in z:
+        try:
+            return (ZType.ENUMERATED_LIST, list(map(int, z.split(","))))
+        # if we can't convert to int, it's invalid
+        except ValueError:
+            raise ProviderQueryError(f"Invalid z value: {z}")
+    else:
+        try:
+            return (ZType.SINGLE, [int(z)])
+        except ValueError:
+            raise ProviderQueryError(f"Invalid z value: {z}")
+
+
+def parse_bbox(
+    bbox: Optional[list],
+) -> Tuple[Optional[shapely.geometry.base.BaseGeometry], Optional[str]]:
+    minz, maxz = None, None
+
+    if not bbox:
+        return None, None
+    else:
+        bbox = list(map(float, bbox))
+
+    if len(bbox) == 4:
+        minx, miny, maxx, maxy = bbox
+        return shapely.geometry.box(minx, miny, maxx, maxy), None
+    elif len(bbox) == 6:
+        minx, miny, minz, maxx, maxy, maxz = bbox
+        return shapely.geometry.box(minx, miny, maxx, maxy), (f"{minz}/{maxz}")
+    else:
+        raise ProviderQueryError(
+            f"Invalid bbox; Expected 4 or 6 points but {len(bbox)} values"
+        )
+
+
+def get_only_key(mapper: dict):
+    value = list(mapper.values())[0]
+    return value
 
 
 def merge_pages(pages: dict[Url, JsonPayload]):
@@ -169,6 +246,7 @@ class RISECache(CacheInterface):
         # max number of items you can query
         MAX_ITEMS_PER_PAGE = 100
 
+        # Get the first response that contains the list of pages
         response = asyncio.run(RISECache.get_or_fetch(url))
 
         NOT_PAGINATED = "meta" not in response
@@ -179,6 +257,9 @@ class RISECache(CacheInterface):
 
         pages_to_complete = math.ceil(total_items / MAX_ITEMS_PER_PAGE)
 
+        # Construct all the urls for the pages
+        #  that we will then fetch in parallel
+        # to get all the data for the endpoint
         urls = [
             f"{url}?page={page}&itemsPerPage={MAX_ITEMS_PER_PAGE}"
             for page in range(1, int(pages_to_complete) + 1)
@@ -274,6 +355,24 @@ class LocationHelper:
         return new
 
     @staticmethod
+    def filter_by_properties(
+        response: dict, select_properties: list[str] | str
+    ) -> dict:
+        list_of_properties: list[str] = (
+            [select_properties]
+            if isinstance(select_properties, str)
+            else select_properties
+        )
+
+        locationsToParams = LocationHelper.get_parameters(response)
+        for param in list_of_properties:
+            for location, paramList in locationsToParams.items():
+                if param not in paramList:
+                    response = LocationHelper.drop_location(response, int(location))
+
+        return response
+
+    @staticmethod
     def filter_by_date(location_response: dict, datetime_: str) -> dict:
         """
         Filter by date
@@ -342,6 +441,78 @@ class LocationHelper:
             )
 
         return filteredResp
+
+    @staticmethod
+    def filter_by_wkt(
+        location_response: dict, wkt: Optional[str] = None, z: Optional[str] = None
+    ) -> dict:
+        parsed_geo = shapely.wkt.loads(str(wkt)) if wkt else None
+        return LocationHelper._filter_by_geometry(location_response, parsed_geo, z)
+
+    @staticmethod
+    def filter_by_bbox(
+        location_response: dict, bbox: Optional[list] = None, z: Optional[str] = None
+    ) -> dict:
+        if bbox:
+            parse_result = parse_bbox(bbox)
+            shapely_box = parse_result[0] if parse_result else None
+            z = parse_result[1] if parse_result else z
+
+        shapely_box = parse_bbox(bbox)[0] if bbox else None
+        # TODO what happens if they specify both a bbox with z and a z value?
+        z = parse_bbox(bbox)[1] if bbox else z
+
+        return LocationHelper._filter_by_geometry(location_response, shapely_box, z)
+
+    @staticmethod
+    def _filter_by_geometry(
+        location_response: dict,
+        geometry: Optional[shapely.geometry.base.BaseGeometry],
+        z: Optional[str] = None,
+    ) -> dict:
+        # need to deep copy so we don't change the dict object
+        copy_to_return = deepcopy(location_response)
+        indices_to_pop = set()
+        parsed_z = parse_z(str(z)) if z else None
+
+        for i, v in enumerate(location_response["data"]):
+            try:
+                elevation = int(float(v["attributes"]["elevation"]))
+            except (ValueError, TypeError):
+                LOGGER.error(f"Invalid elevation {v} for location {i}")
+                elevation = None
+
+            if parsed_z:
+                if elevation is None:
+                    indices_to_pop.add(i)
+                else:
+                    match parsed_z:
+                        case [ZType.RANGE, x]:
+                            if elevation < x[0] or elevation > x[1]:
+                                indices_to_pop.add(i)
+                        case [ZType.SINGLE, x]:
+                            if elevation != x[0]:
+                                indices_to_pop.add(i)
+                        case [ZType.ENUMERATED_LIST, x]:
+                            if elevation not in x:
+                                indices_to_pop.add(i)
+                        case _:
+                            assert_never(parsed_z)
+
+            if geometry:
+                result_geo = shapely.geometry.shape(
+                    v["attributes"]["locationCoordinates"]
+                )
+
+                if not geometry.contains(result_geo):
+                    indices_to_pop.add(i)
+
+        # by reversing the list we pop from the end so the
+        # indices will be in the correct even after removing items
+        for i in sorted(indices_to_pop, reverse=True):
+            copy_to_return["data"].pop(i)
+
+        return copy_to_return
 
 
 class CatalogItem:

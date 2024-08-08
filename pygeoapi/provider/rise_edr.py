@@ -27,9 +27,7 @@
 
 import logging
 from typing import ClassVar, Optional
-from numpy import isin
 import requests
-import shapely
 
 from pygeoapi.provider.base import (
     ProviderConnectionError,
@@ -37,7 +35,12 @@ from pygeoapi.provider.base import (
     ProviderQueryError,
 )
 from pygeoapi.provider.base_edr import BaseEDRProvider
-from pygeoapi.provider.rise_edr_helpers import LocationHelper, RISECache, merge_pages
+from pygeoapi.provider.rise_edr_helpers import (
+    LocationHelper,
+    RISECache,
+    get_only_key,
+    merge_pages,
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -98,7 +101,7 @@ class RiseEDRProvider(BaseEDRProvider):
         else:
             response = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
             response = merge_pages(response)
-            response = list(response.values())[0]
+            response = get_only_key(response)
             if response is None:
                 raise ProviderNoDataError
 
@@ -107,17 +110,7 @@ class RiseEDRProvider(BaseEDRProvider):
 
         # location 1 has parameter 1721
         if select_properties:
-            list_of_properties: list[str] = (
-                [select_properties]
-                if isinstance(select_properties, str)
-                else select_properties
-            )
-
-            locationsToParams = LocationHelper.get_parameters(response)
-            for param in list_of_properties:
-                for location, paramList in locationsToParams.items():
-                    if param not in paramList:
-                        response = LocationHelper.drop_location(response, int(location))
+            response = LocationHelper.filter_by_properties(response, select_properties)
 
         match format_:
             case "json" | "GeoJSON" | _:
@@ -177,7 +170,15 @@ class RiseEDRProvider(BaseEDRProvider):
         return self._fields
 
     @BaseEDRProvider.register()
-    def cube(self, **kwargs):
+    def cube(
+        self,
+        bbox: list,
+        datetime_: Optional[str] = None,
+        select_properties: Optional[list] = None,
+        z: Optional[str] = None,
+        format_: Optional[str] = None,
+        **kwargs,
+    ):
         """
         Returns a data cube defined by bbox and z parameters
 
@@ -187,11 +188,56 @@ class RiseEDRProvider(BaseEDRProvider):
         :param format_: data format of output
 
         """
+        response = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
+        response = merge_pages(response)
+        response = get_only_key(response)
+        if response is None:
+            raise ProviderNoDataError
 
-        
+        if select_properties:
+            response = LocationHelper.filter_by_properties(response, select_properties)
+
+        if datetime_:
+            response = LocationHelper.filter_by_date(response, datetime_)
+
+        response = LocationHelper.filter_by_bbox(response, bbox, z)
+
+        match format_:
+            case "json" | "GeoJSON" | _:
+                features = []
+
+                for location_feature in response["data"]:
+                    feature_as_covjson = {
+                        "type": "Feature",
+                        "id": location_feature["attributes"]["_id"],
+                        "properties": {
+                            "Locations@iot.count": 1,
+                            "Locations": [
+                                {
+                                    "location": location_feature["attributes"][
+                                        "locationCoordinates"
+                                    ]
+                                }
+                            ],
+                        },
+                        "geometry": location_feature["attributes"][
+                            "locationCoordinates"
+                        ],
+                    }
+                    features.append(feature_as_covjson)
+
+                return {"type": "FeatureCollection", "features": features}
 
     @BaseEDRProvider.register()
-    def area(self, wkt, select_properties=[], datetime_=None, z=None, **kwargs):
+    def area(
+        self,
+        wkt: str,
+        select_properties: list[str] = [],
+        datetime_: Optional[str] = None,
+        z: Optional[str] = None,
+        format_: Optional[str] = None,
+        **kwargs,
+    ):
         """
         Extract and return coverage data from a specified area.
 
@@ -203,6 +249,46 @@ class RiseEDRProvider(BaseEDRProvider):
 
         :returns: A CovJSON CoverageCollection.
         """
+
+        response = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
+        response = merge_pages(response)
+        response = get_only_key(response)
+        if response is None:
+            raise ProviderNoDataError
+
+        if select_properties:
+            response = LocationHelper.filter_by_properties(response, select_properties)
+
+        if datetime_:
+            response = LocationHelper.filter_by_date(response, datetime_)
+
+        response = LocationHelper.filter_by_wkt(response, wkt, z)
+
+        match format_:
+            case "json" | "GeoJSON" | _:
+                features = []
+
+                for location_feature in response["data"]:
+                    feature_as_covjson = {
+                        "type": "Feature",
+                        "id": location_feature["attributes"]["_id"],
+                        "properties": {
+                            "Locations@iot.count": 1,
+                            "Locations": [
+                                {
+                                    "location": location_feature["attributes"][
+                                        "locationCoordinates"
+                                    ]
+                                }
+                            ],
+                        },
+                        "geometry": location_feature["attributes"][
+                            "locationCoordinates"
+                        ],
+                    }
+                    features.append(feature_as_covjson)
+
+                return {"type": "FeatureCollection", "features": features}
 
     @BaseEDRProvider.register()
     def item(self, **kwargs):
