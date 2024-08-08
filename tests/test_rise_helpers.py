@@ -228,7 +228,7 @@ def test_wkt_filter():
 def test_parse_bbox():
     bbox = ["-6.0", "50.0", "-4.35", "52.0"]
     parse_result = parse_bbox(bbox)
-    shapely_bbox = parse_result[0] 
+    shapely_bbox = parse_result[0]
     assert shapely_bbox
     zval = parse_result[1]
     assert not zval
@@ -263,3 +263,17 @@ def test_cache():
 
     assert disk_time < network_time
     assert remote_res == disk_res
+
+
+def test_limit_items():
+    with open("tests/data/rise/location.json") as f:
+        data = json.load(f)
+
+        res1 = LocationHelper.filter_by_limit(data, limit=1)
+        assert len(res1["data"]) == 1
+
+        res2 = LocationHelper.filter_by_limit(data, limit=10)
+        assert len(res2["data"]) == 10
+        assert (
+            res2["data"][0]["attributes"]["_id"] == res1["data"][0]["attributes"]["_id"]
+        )

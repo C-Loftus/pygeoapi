@@ -317,6 +317,8 @@ resources:
             - type: edr
               name: RiseEDR
               data: https://data.usbr.gov/
-            # - type: feature
-            #   name: RiseEDR
-            #   data: https://data.usbr.gov/
+            - type: feature
+              name: RiseEDR
+              data: https://data.usbr.gov/
+              entity: Observation
+              title_field: name

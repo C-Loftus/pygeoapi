@@ -1,11 +1,9 @@
-from ast import parse
 from copy import deepcopy
 import datetime
 import json
 import logging
 import math
 from typing import ClassVar, Optional, Protocol, Tuple
-from numpy import shape
 import shapely.wkt
 from typing_extensions import assert_never
 
@@ -513,6 +511,15 @@ class LocationHelper:
             copy_to_return["data"].pop(i)
 
         return copy_to_return
+
+    @staticmethod
+    def filter_by_limit(
+        location_response: dict, limit: int, inplace: bool = False
+    ) -> dict:
+        if not inplace:
+            location_response = deepcopy(location_response)
+        location_response["data"] = location_response["data"][:limit]
+        return location_response
 
 
 class CatalogItem:

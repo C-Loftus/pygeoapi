@@ -291,8 +291,48 @@ class RiseEDRProvider(BaseEDRProvider):
                 return {"type": "FeatureCollection", "features": features}
 
     @BaseEDRProvider.register()
-    def item(self, **kwargs):
-        pass
+    def items(
+        self,
+        bbox: list,
+        datetime_: Optional[str] = None,
+        limit: Optional[int] = None,
+        **kwargs,
+    ):
+        response = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
+        response = merge_pages(response)
+        response = get_only_key(response)
+        if response is None:
+            raise ProviderNoDataError
+
+        if datetime_:
+            response = LocationHelper.filter_by_date(response, datetime_)
+
+        if limit:
+            response = LocationHelper.filter_by_limit(response, limit)
+
+        response = LocationHelper.filter_by_bbox(response, bbox)
+
+        features = []
+
+        for location_feature in response["data"]:
+            feature_as_covjson = {
+                "type": "Feature",
+                "id": location_feature["attributes"]["_id"],
+                "properties": {
+                    "Locations@iot.count": 1,
+                    "Locations": [
+                        {
+                            "location": location_feature["attributes"][
+                                "locationCoordinates"
+                            ]
+                        }
+                    ],
+                },
+                "geometry": location_feature["attributes"]["locationCoordinates"],
+            }
+            features.append(feature_as_covjson)
+
+        return {"type": "FeatureCollection", "features": features}
 
     def query(self, **kwargs):
         """
@@ -312,6 +352,7 @@ class RiseEDRProvider(BaseEDRProvider):
         """
 
         try:
+            LOGGER.error(kwargs)
             return getattr(self, kwargs.get("query_type"))(**kwargs)  # type: ignore
         except AttributeError:
             raise NotImplementedError("Query not implemented!")
