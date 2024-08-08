@@ -25,14 +25,19 @@
 #
 # =================================================================
 
-import datetime
 import logging
-from typing import ClassVar
+from typing import ClassVar, Optional
+from numpy import isin
 import requests
+import shapely
 
-from pygeoapi.provider.base import ProviderGenericError, ProviderQueryError
+from pygeoapi.provider.base import (
+    ProviderConnectionError,
+    ProviderNoDataError,
+    ProviderQueryError,
+)
 from pygeoapi.provider.base_edr import BaseEDRProvider
-from pygeoapi.provider.rise_edr_helpers import LocationHelper
+from pygeoapi.provider.rise_edr_helpers import LocationHelper, RISECache, merge_pages
 
 
 LOGGER = logging.getLogger(__name__)
@@ -58,57 +63,64 @@ class RiseEDRProvider(BaseEDRProvider):
         self.instances = []
 
     @BaseEDRProvider.register()
-    def locations(self, **kwargs):
+    def locations(
+        self,
+        location_id: Optional[int] = None,
+        datetime_: Optional[str] = None,
+        select_properties: Optional[str] = None,
+        crs: Optional[str] = None,
+        format_: Optional[str] = None,
+        **kwargs,
+    ):
         """
         Extract data from location
 
-        :param locationId: location id in RISE
-        :param datetime : temporal (datestamp or extent)
+        :param location_id: location id in RISE
+        :param datetime_ : temporal (datestamp or extent)
         :param parameter-name : parameter name
         :param crs : coordinate reference system string
         :f data format for output
 
         :returns: coverage data as specified format
         """
-        queryOptions = {}
 
-        if kwargs.get("location_id"):
-            # If we know the id befor
-            queryOptions["id"] = kwargs.get("location_id")
-        if kwargs.get("crs"):
-            queryOptions["crs"] = kwargs.get("crs")
+        if location_id:
+            response = requests.get(
+                RiseEDRProvider.LOCATION_API,
+                headers={"accept": "application/vnd.api+json"},
+                params={"id": location_id},
+            )
 
-        response = requests.get(
-            RiseEDRProvider.LOCATION_API,
-            headers={"accept": "application/vnd.api+json"},
-            params=queryOptions,
-        )
-
-        if not response.ok:
-            raise ProviderQueryError(response.text)
+            if not response.ok:
+                raise ProviderQueryError(response.text)
+            else:
+                response = response.json()
         else:
-            response = response.json()
+            response = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
+            response = merge_pages(response)
+            response = list(response.values())[0]
+            if response is None:
+                raise ProviderNoDataError
 
-        if kwargs.get("datetime_"):
-            query_date: str = kwargs.get("datetime_")
-            response = LocationHelper.filter_by_date(response, query_date)
-
-        parametersToQueryBy = kwargs.get("select_properties")
-        LOGGER.error(f"{kwargs}")
+        if datetime_:
+            response = LocationHelper.filter_by_date(response, datetime_)
 
         # location 1 has parameter 1721
+        if select_properties:
+            list_of_properties: list[str] = (
+                [select_properties]
+                if isinstance(select_properties, str)
+                else select_properties
+            )
 
-        if parametersToQueryBy:
             locationsToParams = LocationHelper.get_parameters(response)
-            for param in parametersToQueryBy:
+            for param in list_of_properties:
                 for location, paramList in locationsToParams.items():
                     if param not in paramList:
-                        print(f"dropping {location}")
                         response = LocationHelper.drop_location(response, int(location))
-                        print(len(response["data"]))
 
-        match kwargs.get("format_"):
-            case "json" | _:
+        match format_:
+            case "json" | "GeoJSON" | _:
                 features = []
 
                 for location_feature in response["data"]:
@@ -137,17 +149,23 @@ class RiseEDRProvider(BaseEDRProvider):
         if self._fields:
             return self._fields
 
-        res = requests.get(
-            "https://data.usbr.gov/rise/api/parameter?id=18",
-            headers={"accept": "application/vnd.api+json"},
+        pages = RISECache.get_or_fetch_all_pages(
+            "https://data.usbr.gov/rise/api/parameter",
         )
+        res = merge_pages(pages)
+        for k, v in res.items():
+            if k is None or v is None:
+                raise ProviderConnectionError("Error fetching parameters")
 
         self._fields: dict = {}
+        # get the value of a dict with one value without
+        # needed to know the key name. This is just the
+        # merged json payload
+        res: dict = next(iter(res.values()))
+        if res is None:
+            raise ProviderNoDataError
 
-        if not res.ok:
-            raise ProviderGenericError(res.text)
-
-        for item in res.json()["data"]:
+        for item in res["data"]:
             param = item["attributes"]
             # TODO check if this should be a string or a number
             self._fields[str(param["_id"])] = {
@@ -157,6 +175,38 @@ class RiseEDRProvider(BaseEDRProvider):
             }
 
         return self._fields
+
+    @BaseEDRProvider.register()
+    def cube(self, **kwargs):
+        """
+        Returns a data cube defined by bbox and z parameters
+
+        :param bbox: `list` of minx,miny,maxx,maxy coordinate values as `float`
+        :param datetime_: temporal (datestamp or extent)
+        :param z: vertical level(s)
+        :param format_: data format of output
+
+        """
+
+        
+
+    @BaseEDRProvider.register()
+    def area(self, wkt, select_properties=[], datetime_=None, z=None, **kwargs):
+        """
+        Extract and return coverage data from a specified area.
+
+        :param wkt: Well-Known Text (WKT) representation of the
+                    geometry for the area.
+        :param select_properties: List of properties to include
+                                  in the response.
+        :param datetime_: Temporal filter for observations.
+
+        :returns: A CovJSON CoverageCollection.
+        """
+
+    @BaseEDRProvider.register()
+    def item(self, **kwargs):
+        pass
 
     def query(self, **kwargs):
         """
@@ -176,7 +226,7 @@ class RiseEDRProvider(BaseEDRProvider):
         """
 
         try:
-            return getattr(self, kwargs.get("query_type"))(**kwargs)
+            return getattr(self, kwargs.get("query_type"))(**kwargs)  # type: ignore
         except AttributeError:
             raise NotImplementedError("Query not implemented!")
 

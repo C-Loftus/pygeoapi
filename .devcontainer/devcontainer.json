@@ -40,7 +40,8 @@
 				"ms-python.python",
 				"wholroyd.jinja",
 				"redhat.vscode-yaml",
-				"charliermarsh.ruff"
+				"charliermarsh.ruff",
+				"Codeium.codeium"
 			]
 		}
 	},

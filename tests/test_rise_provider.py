@@ -27,15 +27,8 @@
 #
 # =================================================================
 
-import datetime
-import json
-
-import pytest
-from pytest import param
 import requests
-import shapely
-
-from pygeoapi.provider.base import ProviderItemNotFoundError
+import pytest
 
 from pygeoapi.provider.rise_edr import RiseEDRProvider
 
@@ -52,30 +45,55 @@ def config():
 
 def test_location_locationId(config):
     p = RiseEDRProvider(config)
-    out = p.location(locationId=6902)
-    assert out["links"]["self"] == "/rise/api/location?id=6902"
-    assert len(out["data"]) == 1
-    out = p.location(locationId=1)
-    assert out["links"]["self"] == "/rise/api/location?id=1"
-    assert len(out["data"]) == 1
+    out = p.locations(location_id=6902)
+    assert len(out["features"]) == 1
+    out = p.locations(location_id=1)
+    assert len(out["features"]) == 1
+    # invalid location should return nothing
+    out = p.locations(location_id=1111111111111111)
+    assert len(out["features"]) == 0
 
 
-def test_location_parameterName(config):
+def test_get_fields(config):
     p = RiseEDRProvider(config)
-    out = p.location(parameterName="DUMMY-PARAM")
-    assert len(out["data"]) == 0
+    fields = p.get_fields()
+    assert "DUMMY_PARAM" not in fields
+    assert "18" in fields
 
-    out = p.location(parameterName="Streamflow")
-    assert out["data"][0]["id"] == "/rise/api/location/3658"
+    assert requests.get(
+        "https://data.usbr.gov/rise/api/parameter?page=1&itemsPerPage=25",
+        headers={"accept": "application/vnd.api+json"},
+    ).json()["meta"]["totalItems"] == len(fields)
+
+
+def test_location_select_properties(config):
+    # Currently in pygeoapi we use select_properties as the
+    # keyword argument. This is hold over from OAF it seems.
+
+    p = RiseEDRProvider(config)
+
+    out = p.locations(select_properties="DUMMY-PARAM")
+    assert len(out["features"]) == 0
+
+    out = p.locations(select_properties="18")
+    assert len(out["features"]) > 0
 
 
 def test_location_datetime(config):
     p = RiseEDRProvider(config)
-    out = p.location(datetime="2024-03-29T15:49:57+00:00")
-    assert out["data"][0]["id"] == "/rise/api/location/6902"
+    out = p.locations(datetime_="2024-03-29T15:49:57+00:00")
+    for i in out["features"]:
+        if i["id"] == 6902:
+            break
+    else:
+        assert False
 
-    out = p.location(datetime="2024-03-29/..")
-    assert out["data"][0]["id"] == "/rise/api/location/6902"
+    out = p.locations(datetime="2024-03-29/..")
+    for i in out["features"]:
+        if i["id"] == 6902:
+            break
+    else:
+        assert False
 
 
 def test_item():

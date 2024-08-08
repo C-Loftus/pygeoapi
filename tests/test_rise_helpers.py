@@ -1,13 +1,14 @@
 import json
 
-from flask import request
+import pytest
+
 from pygeoapi.provider.rise_edr_helpers import (
     LocationHelper,
-    fetch_all_pages,
     fetch_url_group,
     flatten_values,
     fetch_url,
     RISECache,
+    CacheInterface,
     merge_pages,
 )
 
@@ -75,7 +76,7 @@ def test_get_parameters():
 
 def test_fetch_all_pages():
     url = "https://data.usbr.gov/rise/api/location"
-    pages = fetch_all_pages(url)
+    pages = RISECache.get_or_fetch_all_pages(url)
 
     # There are 6 pages so we should get 6 responses
     assert len(pages) == 6
@@ -103,17 +104,18 @@ def test_merge_pages():
 
     merged = merge_pages(fetched_mock)
     for url, content in merged.items():
+        assert content is not None
         assert content["data"]
         assert len(content["data"]) == 4
-        break
 
 
 def test_integration_merge_pages():
     url = "https://data.usbr.gov/rise/api/location"
 
-    pages = fetch_all_pages(url)
+    pages = RISECache.get_or_fetch_all_pages(url, force_fetch=True)
     merged = merge_pages(pages)
     for url, content in merged.items():
+        assert content is not None
         assert content["data"]
         assert len(content["data"]) == 592
         break
@@ -121,7 +123,7 @@ def test_integration_merge_pages():
 
 def test_fetch_all_only_fetches_one_if_one_page():
     url = "https://data.usbr.gov/rise/api/location/1"
-    pages = fetch_all_pages(url)
+    pages = RISECache.get_or_fetch_all_pages(url, force_fetch=True)
     assert len(pages) == 1
 
     res = requests.get(url, headers={"accept": "application/vnd.api+json"}).json()
@@ -148,3 +150,8 @@ def test_cache():
 
     assert disk_time < network_time
     assert remote_res == disk_res
+
+
+def test_interface():
+    with pytest.raises(TypeError):
+        _ = CacheInterface()  # type: ignore

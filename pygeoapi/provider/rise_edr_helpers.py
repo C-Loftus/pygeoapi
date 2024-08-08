@@ -2,26 +2,25 @@ import datetime
 import json
 import logging
 import math
-from typing import ClassVar, Literal, Protocol
-
-import requests
+from typing import ClassVar, Protocol
 
 from pygeoapi.provider.base import ProviderQueryError
 import asyncio
 import aiohttp
-from pygeoapi.provider.rise_api_types import RiseLocationResponse
 import shelve
 
 LOGGER = logging.getLogger(__name__)
 HEADERS = {"accept": "application/vnd.api+json"}
 
+JsonPayload = dict
+Url = str
 
-def merge_pages(pages: dict[str, dict]) -> dict[str, dict]:
+
+def merge_pages(pages: dict[Url, JsonPayload]):
     # Initialize variables to hold the URL and combined data
     combined_url = None
     combined_data = None
 
-    # Iterate over the dictionaries
     for url, content in pages.items():
         if combined_url is None:
             combined_url = url  # Set the URL from the first dictionary
@@ -43,15 +42,19 @@ def merge_pages(pages: dict[str, dict]) -> dict[str, dict]:
 async def fetch_url(url: str) -> dict:
     async with aiohttp.ClientSession(headers=HEADERS) as session:
         async with session.get(url, headers=HEADERS) as response:
-            return await response.json()
+            try:
+                return await response.json()
+            except Exception as e:
+                LOGGER.error(f"{e}: Text: {response.text}, URL: {url}")
+                raise e
 
 
 async def fetch_url_group(
     urls: list[str],
-) -> dict[str, dict | Exception]:
+):
     tasks = [asyncio.create_task(fetch_url(url)) for url in urls]
 
-    results: dict[str, dict | Exception] = {url: {} for url in urls}
+    results = {url: {} for url in urls}
 
     for coroutine, url in zip(asyncio.as_completed(tasks), urls):
         result = await coroutine
@@ -61,11 +64,54 @@ async def fetch_url_group(
     return results
 
 
-class RISECache(Protocol):
+class SingletonMeta(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            instance = super().__call__(*args, **kwargs)
+            cls._instances[cls] = instance
+        return cls._instances[cls]
+
+
+class CacheInterface(Protocol):
+    """
+    A generic caching interface that supports key updates
+    and fetching url in groups. The client does not need
+    to be aware of whether or not the url is in the cache
+    """
+
+    db: ClassVar[str]
+
+    def __init__(self):
+        if type(self) is super().__class__:
+            raise TypeError(
+                "Cannot instantiate an instance of the cache. You must use static methods on the class itself"
+            )
+
+    @staticmethod
+    async def get_or_fetch(url, force_fetch=False) -> JsonPayload: ...
+
+    @staticmethod
+    async def get_or_fetch_group(
+        urls: list[str], force_fetch=False
+    ) -> dict[Url, JsonPayload]: ...
+
+    @staticmethod
+    def set(url: str, data) -> None: ...
+
+    @staticmethod
+    def clear(url: str) -> None: ...
+
+    @staticmethod
+    def contains(url: str) -> bool: ...
+
+
+class RISECache(CacheInterface):
     db: ClassVar[str] = "tests/data/risedb"
 
     @staticmethod
-    async def get_or_fetch(url, force_fetch=False) -> dict:
+    async def get_or_fetch(url, force_fetch=False):
         """Send a get request or grab it locally if it already exists in the cache"""
 
         with shelve.open(RISECache.db) as db:
@@ -77,9 +123,7 @@ class RISECache(Protocol):
                 return res
 
     @staticmethod
-    async def get_or_fetch_group(
-        urls: list[str], force_fetch=False
-    ) -> dict[str, dict | Exception]:
+    async def get_or_fetch_group(urls: list[str], force_fetch=False):
         """Send a get request to all urls or grab it locally if it already exists in the cache"""
 
         with shelve.open(RISECache.db) as db:
@@ -88,7 +132,9 @@ class RISECache(Protocol):
 
             remote_fetch = fetch_url_group(urls_not_in_cache)
 
-            local_fetch = {url: db[url] for url in urls_in_cache}
+            local_fetch: dict[Url, JsonPayload] = {
+                url: db[url] for url in urls_in_cache
+            }
 
             local_fetch.update(await remote_fetch)
 
@@ -119,7 +165,7 @@ class RISECache(Protocol):
             return url in db
 
     @staticmethod
-    def get_or_fetch_all_pages(url: str):
+    def get_or_fetch_all_pages(url: str, force_fetch=False) -> dict[Url, JsonPayload]:
         # max number of items you can query
         MAX_ITEMS_PER_PAGE = 100
 
@@ -138,7 +184,7 @@ class RISECache(Protocol):
             for page in range(1, int(pages_to_complete) + 1)
         ]
 
-        pages = asyncio.run(RISECache.get_or_fetch_group(urls))
+        pages = asyncio.run(RISECache.get_or_fetch_group(urls, force_fetch=force_fetch))
 
         return pages
 
@@ -159,6 +205,7 @@ class LocationHelper:
     ) -> dict[str, list[str]]:
         lookup: dict[str, list[str]] = {}
         if not isinstance(location_response["data"], list):
+            # make sure it's a list for iteration purposes
             location_response["data"] = [location_response["data"]]
 
         for loc in location_response["data"]:
@@ -166,10 +213,17 @@ class LocationHelper:
             locationNumber = id.removeprefix("/rise/api/location/")
             items = []
 
-            for catalogItem in loc["relationships"]["catalogItems"]["data"]:
-                items.append("https://data.usbr.gov" + catalogItem["id"])
+            try:
+                for catalogItem in loc["relationships"]["catalogItems"]["data"]:
+                    items.append("https://data.usbr.gov" + catalogItem["id"])
 
-            lookup[locationNumber] = items
+                lookup[locationNumber] = items
+            except KeyError:
+                LOGGER.error(f"Missing key for catalog item {id} in {loc}")
+                # location 3396 and 3395 always return failure
+                # and 5315 and 5316 are locations which don't have catalogItems
+                # for some reason
+                lookup[locationNumber] = []
 
         return lookup
 
@@ -270,7 +324,7 @@ class LocationHelper:
                 if updateDate < start or updateDate > end:
                     filteredResp["data"].pop(i)
 
-        elif len(dateRange) == 1:  # noqa
+        elif len(dateRange) == 1:
             # By casting to a string we can use .str.contains to coarsely check.
             # We want 2019-10 to match 2019-10-01, 2019-10-02, etc.
 

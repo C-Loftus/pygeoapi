@@ -1,0 +1,1075 @@
+{
+    "links": {
+        "self": "/rise/api/location?itemsPerPage=25&search=%20Waconda"
+    },
+    "meta": {
+        "totalItems": 2,
+        "itemsPerPage": 25,
+        "currentPage": 1
+    },
+    "data": [
+        {
+            "id": "/rise/api/location/3091",
+            "type": "Location",
+            "attributes": {
+                "_id": 3091,
+                "locationParentId": null,
+                "locationName": "Western US",
+                "locationDescription": "The 17 western states of Washington, Oregon, Idaho, Montana, North Dakota, South Dakota, Nebraska, Wyoming, California, Nevada, Utah, Colorado, Kansas, Oklahoma, Texas, New Mexico, and Arizona..",
+                "locationStatusId": 1,
+                "locationCoordinates": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [
+                                -124.508,
+                                48.197
+                            ],
+                            [
+                                -124.304,
+                                40.096
+                            ],
+                            [
+                                -117.02,
+                                32.608
+                            ],
+                            [
+                                -103.405,
+                                29.136
+                            ],
+                            [
+                                -93.466,
+                                30.77
+                            ],
+                            [
+                                -94.692,
+                                38.939
+                            ],
+                            [
+                                -97.279,
+                                48.946
+                            ],
+                            [
+                                -122.67,
+                                48.946
+                            ],
+                            [
+                                -124.508,
+                                48.197
+                            ]
+                        ]
+                    ]
+                },
+                "elevation": null,
+                "createDate": "2018-10-02T15:00:45+00:00",
+                "updateDate": "2023-11-09T20:50:58+00:00",
+                "horizontalDatum": {
+                    "_id": "WGS84",
+                    "definition": "World Geodetic System of 1984"
+                },
+                "locationGeometry": {
+                    "_id": 1,
+                    "locationGeometry": "area",
+                    "definition": "a region extending in both x and y directions",
+                    "createDate": "2018-10-02T14:30:48+00:00"
+                },
+                "timezone": "MT",
+                "verticalDatum": {
+                    "_id": "NAVD88",
+                    "definition": "North American Vertical Datum of 1988"
+                },
+                "locationTags": [
+                    {
+                        "id": 238,
+                        "tag": "Reclamation Domain",
+                        "createDate": "2020-08-27T15:25:10+00:00"
+                    }
+                ],
+                "relatedLocationIds": null,
+                "projectNames": [],
+                "locationTypeName": "Administrative Boundary",
+                "timezoneName": "Mountain Standard Time",
+                "timezoneOffset": -7,
+                "locationRegionNames": [
+                    "Denver Office",
+                    "Great Plains",
+                    "Lower Colorado",
+                    "Mid-Pacific",
+                    "Pacific Northwest",
+                    "Upper Colorado"
+                ],
+                "locationUnifiedRegionNames": [
+                    "Missouri Basin",
+                    "Arkansas-Rio Grande-Texas-Gulf",
+                    "Upper Colorado Basin",
+                    "Lower Colorado Basin",
+                    "Columbia-Pacific Northwest",
+                    "California-Great Basin"
+                ]
+            },
+            "relationships": {
+                "states": {
+                    "data": [
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/AZ"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/CA"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/CO"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/ID"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/KS"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/MT"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/ND"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/NE"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/NM"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/NV"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/OK"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/OR"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/SD"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/TX"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/UT"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/WA"
+                        },
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/WY"
+                        }
+                    ]
+                },
+                "locationUnifiedRegions": {
+                    "data": [
+                        {
+                            "type": "UnifiedRegion",
+                            "id": "/rise/api/unified-region/5"
+                        },
+                        {
+                            "type": "UnifiedRegion",
+                            "id": "/rise/api/unified-region/6"
+                        },
+                        {
+                            "type": "UnifiedRegion",
+                            "id": "/rise/api/unified-region/7"
+                        },
+                        {
+                            "type": "UnifiedRegion",
+                            "id": "/rise/api/unified-region/8"
+                        },
+                        {
+                            "type": "UnifiedRegion",
+                            "id": "/rise/api/unified-region/9"
+                        },
+                        {
+                            "type": "UnifiedRegion",
+                            "id": "/rise/api/unified-region/10"
+                        }
+                    ]
+                },
+                "catalogRecords": {
+                    "data": [
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4100"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4409"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4410"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4412"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4415"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4421"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4423"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4427"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4432"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4437"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4460"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4482"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4495"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4504"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4505"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4506"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4511"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4512"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4513"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4516"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4517"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4520"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4522"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4523"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4615"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4618"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4621"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4624"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4625"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4626"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4627"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4630"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4631"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4634"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4639"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4642"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4664"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4669"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4687"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6293"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6299"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6375"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6376"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6378"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6379"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6381"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6382"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6383"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6386"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6387"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6388"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6392"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6400"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/6402"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/7962"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/7976"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/7979"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/7981"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/7985"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/7986"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/7989"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/7990"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/7991"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/8001"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/8023"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/8029"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/8032"
+                        }
+                    ]
+                },
+                "catalogItems": {
+                    "data": [
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/4770"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/4771"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/6269"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/6246"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/6247"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/6267"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/6284"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/10692"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/6274"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/6279"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/6287"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/6297"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/10751"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/10915"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11007"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11013"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11050"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11014"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11035"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11049"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11051"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11052"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11053"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11461"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11443"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11056"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11057"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11060"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11476"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11554"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11555"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11064"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11444"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11446"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11447"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11460"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11467"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11475"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11469"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11470"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11471"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11482"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11483"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11486"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11488"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11489"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11492"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11493"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11494"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11497"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11498"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11499"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11500"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11507"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11518"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11566"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11567"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11546"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11547"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11548"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11549"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11569"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11579"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11582"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/42543"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/43055"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/43102"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/43122"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/43142"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/43162"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/50556"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/65940"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72317"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72318"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72319"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72320"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72326"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72344"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72347"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72348"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72352"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72353"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72354"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72355"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72366"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72367"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72707"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72708"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72716"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/72718"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128572"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128525"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128529"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128531"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128532"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128533"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128563"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128538"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128540"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128549"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128542"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128545"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128567"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128546"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128547"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128562"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128548"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128575"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128576"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128577"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128578"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128630"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128634"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128635"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128641"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128663"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128684"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128685"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128692"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/128702"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "/rise/api/location/504",
+            "type": "Location",
+            "attributes": {
+                "_id": 504,
+                "locationParentId": null,
+                "locationName": "Waconda Lake and Glen Elder Dam",
+                "locationDescription": null,
+                "locationStatusId": 1,
+                "locationCoordinates": {
+                    "type": "Point",
+                    "coordinates": [
+                        -98.3133,
+                        39.4961
+                    ]
+                },
+                "elevation": "1467.000000",
+                "createDate": "2020-08-12T10:08:06+00:00",
+                "updateDate": "2020-08-12T10:08:06+00:00",
+                "horizontalDatum": {
+                    "_id": "WGS84",
+                    "definition": "World Geodetic System of 1984"
+                },
+                "locationGeometry": {
+                    "_id": 3,
+                    "locationGeometry": "point",
+                    "definition": "A single x-y point",
+                    "createDate": "2018-10-02T14:30:27+00:00"
+                },
+                "timezone": "CT",
+                "verticalDatum": null,
+                "locationTags": [
+                    {
+                        "id": 10,
+                        "tag": "Missouri River Basin",
+                        "createDate": "2019-01-29T11:16:01+00:00"
+                    }
+                ],
+                "relatedLocationIds": null,
+                "projectNames": [],
+                "locationTypeName": "Lake/Reservoir",
+                "timezoneName": "Central Standard Time",
+                "timezoneOffset": -6,
+                "locationRegionNames": [
+                    "Great Plains"
+                ],
+                "locationUnifiedRegionNames": [
+                    "Missouri Basin"
+                ]
+            },
+            "relationships": {
+                "states": {
+                    "data": [
+                        {
+                            "type": "State",
+                            "id": "/rise/api/state/KS"
+                        }
+                    ]
+                },
+                "locationUnifiedRegions": {
+                    "data": [
+                        {
+                            "type": "UnifiedRegion",
+                            "id": "/rise/api/unified-region/5"
+                        }
+                    ]
+                },
+                "catalogRecords": {
+                    "data": [
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/2472"
+                        },
+                        {
+                            "type": "CatalogRecord",
+                            "id": "/rise/api/catalog-record/4609"
+                        }
+                    ]
+                },
+                "catalogItems": {
+                    "data": [
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/840"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/841"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/844"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/845"
+                        },
+                        {
+                            "type": "CatalogItem",
+                            "id": "/rise/api/catalog-item/11434"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

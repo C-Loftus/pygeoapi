@@ -1,0 +1,515 @@
+{
+    "links": {
+        "self": "/rise/api/result?itemId=840&itemsPerPage=25&page=1",
+        "first": "/rise/api/result?itemId=840&itemsPerPage=25&page=1",
+        "last": "/rise/api/result?itemId=840&itemsPerPage=25&page=567",
+        "next": "/rise/api/result?itemId=840&itemsPerPage=25&page=2"
+    },
+    "meta": {
+        "totalItems": 14169,
+        "itemsPerPage": 25,
+        "currentPage": 1
+    },
+    "data": [
+        {
+            "id": "/rise/api/result/40284530",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284530,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-01T05:00:00+00:00",
+                "result": 230565,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284531",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284531,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-02T05:00:00+00:00",
+                "result": 237617,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284532",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284532,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-03T05:00:00+00:00",
+                "result": 237563,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284533",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284533,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-04T05:00:00+00:00",
+                "result": 237565,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284534",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284534,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-05T05:00:00+00:00",
+                "result": 237314,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284535",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284535,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-06T05:00:00+00:00",
+                "result": 237691,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284536",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284536,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-07T05:00:00+00:00",
+                "result": 237691,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284537",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284537,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-08T05:00:00+00:00",
+                "result": 237565,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284538",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284538,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-09T05:00:00+00:00",
+                "result": 237440,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284539",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284539,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-10T05:00:00+00:00",
+                "result": 237942,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284540",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284540,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-11T05:00:00+00:00",
+                "result": 237942,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284541",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284541,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-12T05:00:00+00:00",
+                "result": 238319,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284542",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284542,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-13T05:00:00+00:00",
+                "result": 238445,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284543",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284543,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-14T05:00:00+00:00",
+                "result": 238570,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284544",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284544,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-15T05:00:00+00:00",
+                "result": 238696,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284545",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284545,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-16T05:00:00+00:00",
+                "result": 238947,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284546",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284546,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-17T05:00:00+00:00",
+                "result": 238947,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284547",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284547,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-18T05:00:00+00:00",
+                "result": 238947,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284548",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284548,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-19T05:00:00+00:00",
+                "result": 239199,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284549",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284549,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-20T05:00:00+00:00",
+                "result": 239324,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284550",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284550,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-21T05:00:00+00:00",
+                "result": 239450,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284551",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284551,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-22T05:00:00+00:00",
+                "result": 239450,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284552",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284552,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-23T05:00:00+00:00",
+                "result": 239575,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284553",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284553,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-24T05:00:00+00:00",
+                "result": 239827,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        },
+        {
+            "id": "/rise/api/result/40284554",
+            "type": "Result",
+            "attributes": {
+                "_id": 40284554,
+                "itemId": 840,
+                "locationId": 504,
+                "sourceCode": "GPHYDROMET",
+                "dateTime": "1976-01-25T05:00:00+00:00",
+                "result": 239952,
+                "status": null,
+                "modelRunMemberId": null,
+                "parameterId": 3,
+                "modelRunId": null,
+                "resultAttributes": null,
+                "lastUpdate": null,
+                "createDate": "2024-03-27T19:59:22+00:00",
+                "updateDate": null
+            }
+        }
+    ]
+}
