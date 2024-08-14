@@ -3,32 +3,37 @@ import datetime
 import json
 import logging
 import math
-from typing import ClassVar, Optional, Protocol, Tuple
+from typing import ClassVar, Mapping, Optional, Tuple
 import shapely.wkt
 from typing_extensions import assert_never
 
-import shapely
+import shapely  # type: ignore
 
-from pygeoapi.provider.base import ProviderQueryError
+from pygeoapi.provider.base import (
+    ProviderConnectionError,
+    ProviderNoDataError,
+    ProviderQueryError,
+)
 import asyncio
-import aiohttp
+import aiohttp  # type: ignore
 import shelve
-from enum import Enum, auto
+
+from pygeoapi.provider.rise_api_types import (
+    CacheInterface,
+    Coverage,
+    CoverageCollection,
+    CoverageRange,
+    JsonPayload,
+    Parameter,
+    RiseCatalogItemEndpointResponse,
+    RiseLocationResponse,
+    Url,
+    ZType,
+)
 
 
 LOGGER = logging.getLogger(__name__)
 HEADERS = {"accept": "application/vnd.api+json"}
-
-JsonPayload = dict
-Url = str
-
-
-class ZType(Enum):
-    SINGLE = auto()
-    # Every value between two values
-    RANGE = auto()
-    # An enumerated list that the value must be in
-    ENUMERATED_LIST = auto()
 
 
 def parse_z(z: str) -> Optional[Tuple[ZType, list[int]]]:
@@ -91,6 +96,10 @@ def get_only_key(mapper: dict):
     return value
 
 
+def get_trailing_id(url: str) -> str:
+    return url.split("/")[-1]
+
+
 def merge_pages(pages: dict[Url, JsonPayload]):
     # Initialize variables to hold the URL and combined data
     combined_url = None
@@ -149,39 +158,6 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class CacheInterface(Protocol):
-    """
-    A generic caching interface that supports key updates
-    and fetching url in groups. The client does not need
-    to be aware of whether or not the url is in the cache
-    """
-
-    db: ClassVar[str]
-
-    def __init__(self):
-        if type(self) is super().__class__:
-            raise TypeError(
-                "Cannot instantiate an instance of the cache. You must use static methods on the class itself"
-            )
-
-    @staticmethod
-    async def get_or_fetch(url, force_fetch=False) -> JsonPayload: ...
-
-    @staticmethod
-    async def get_or_fetch_group(
-        urls: list[str], force_fetch=False
-    ) -> dict[Url, JsonPayload]: ...
-
-    @staticmethod
-    def set(url: str, data) -> None: ...
-
-    @staticmethod
-    def clear(url: str) -> None: ...
-
-    @staticmethod
-    def contains(url: str) -> bool: ...
-
-
 class RISECache(CacheInterface):
     db: ClassVar[str] = "tests/data/risedb"
 
@@ -196,6 +172,41 @@ class RISECache(CacheInterface):
                 res = await fetch_url(url)
                 db[url] = res
                 return res
+
+    @staticmethod
+    def get_fields() -> dict[str, dict]:
+        if RISECache.contains("allFields"):
+            return RISECache.get("allFields")
+
+        fields = {}
+
+        pages = RISECache.get_or_fetch_all_pages(
+            "https://data.usbr.gov/rise/api/parameter",
+        )
+        res = merge_pages(pages)
+        for k, v in res.items():
+            if k is None or v is None:
+                raise ProviderConnectionError("Error fetching parameters")
+
+        # get the value of a dict with one value without
+        # needed to know the key name. This is just the
+        # merged json payload
+        res: dict = next(iter(res.values()))
+        if res is None:
+            raise ProviderNoDataError
+
+        for item in res["data"]:
+            param = item["attributes"]
+            # TODO check if this should be a string or a number
+            fields[str(param["_id"])] = {
+                "type": param["parameterUnit"],
+                "title": param["parameterName"],
+                "x-ogc-unit": param["parameterUnit"],
+            }
+
+        RISECache.set("allFields", fields)
+
+        return fields
 
     @staticmethod
     async def get_or_fetch_group(urls: list[str], force_fetch=False):
@@ -240,6 +251,11 @@ class RISECache(CacheInterface):
             return url in db
 
     @staticmethod
+    def get(url: str):
+        with shelve.open(RISECache.db) as db:
+            return db[url]
+
+    @staticmethod
     def get_or_fetch_all_pages(url: str, force_fetch=False) -> dict[Url, JsonPayload]:
         # max number of items you can query
         MAX_ITEMS_PER_PAGE = 100
@@ -277,11 +293,15 @@ def flatten_values(input: dict[str, list[str]]) -> list[str]:
     return output
 
 
+locationId = str
+catalogItemEndpoint = str
+
+
 class LocationHelper:
     @staticmethod
-    def get_catalogItems(
-        location_response: dict,
-    ) -> dict[str, list[str]]:
+    def get_catalogItemURLs(
+        location_response: RiseLocationResponse,
+    ) -> dict[locationId, list[catalogItemEndpoint]]:
         lookup: dict[str, list[str]] = {}
         if not isinstance(location_response["data"], list):
             # make sure it's a list for iteration purposes
@@ -306,16 +326,21 @@ class LocationHelper:
 
         return lookup
 
+    locationId = str
+    paramIdList = list[str | None]
+
     @staticmethod
     def get_parameters(
-        allLocations: dict,
-    ) -> dict[str, list[str | None]]:
-        locationsToCatalogItems = LocationHelper.get_catalogItems(allLocations)
+        allLocations: RiseLocationResponse,
+    ) -> dict[locationId, paramIdList]:
+        locationsToCatalogItems = LocationHelper.get_catalogItemURLs(allLocations)
 
         locationToParams: dict[str, list[str | None]] = {}
 
         for location, catalogItems in locationsToCatalogItems.items():
-            urlItemMapper = asyncio.run(RISECache.get_or_fetch_group(catalogItems))
+            urlItemMapper: dict[str, RiseCatalogItemEndpointResponse] = asyncio.run(
+                RISECache.get_or_fetch_group(catalogItems)
+            )  # type: ignore since the function doesn't know it is specifically for a catalogitem, but we know it is
 
             try:
                 allParams = []
@@ -340,22 +365,23 @@ class LocationHelper:
         return locationToParams
 
     @staticmethod
-    def drop_location(json_with_multiple_locations: dict, location_id: int) -> dict:
-        allLocations: list[dict] = json_with_multiple_locations["data"]
+    def drop_location(
+        response: RiseLocationResponse, location_id: int
+    ) -> RiseLocationResponse:
+        new = response.copy()
 
-        allLocations = [
-            loc for loc in allLocations if loc["attributes"]["_id"] != location_id
+        filtered_locations = [
+            loc for loc in response["data"] if loc["attributes"]["_id"] != location_id
         ]
 
-        new = json_with_multiple_locations.copy()
-        new.update({"data": allLocations})
+        new.update({"data": filtered_locations})
 
         return new
 
     @staticmethod
     def filter_by_properties(
-        response: dict, select_properties: list[str] | str
-    ) -> dict:
+        response: RiseLocationResponse, select_properties: list[str] | str
+    ) -> RiseLocationResponse:
         list_of_properties: list[str] = (
             [select_properties]
             if isinstance(select_properties, str)
@@ -371,7 +397,9 @@ class LocationHelper:
         return response
 
     @staticmethod
-    def filter_by_date(location_response: dict, datetime_: str) -> dict:
+    def filter_by_date(
+        location_response: RiseLocationResponse, datetime_: str
+    ) -> RiseLocationResponse:
         """
         Filter by date
         """
@@ -442,15 +470,19 @@ class LocationHelper:
 
     @staticmethod
     def filter_by_wkt(
-        location_response: dict, wkt: Optional[str] = None, z: Optional[str] = None
-    ) -> dict:
+        location_response: RiseLocationResponse,
+        wkt: Optional[str] = None,
+        z: Optional[str] = None,
+    ) -> RiseLocationResponse:
         parsed_geo = shapely.wkt.loads(str(wkt)) if wkt else None
         return LocationHelper._filter_by_geometry(location_response, parsed_geo, z)
 
     @staticmethod
     def filter_by_bbox(
-        location_response: dict, bbox: Optional[list] = None, z: Optional[str] = None
-    ) -> dict:
+        location_response: RiseLocationResponse,
+        bbox: Optional[list] = None,
+        z: Optional[str] = None,
+    ) -> RiseLocationResponse:
         if bbox:
             parse_result = parse_bbox(bbox)
             shapely_box = parse_result[0] if parse_result else None
@@ -464,10 +496,10 @@ class LocationHelper:
 
     @staticmethod
     def _filter_by_geometry(
-        location_response: dict,
+        location_response: RiseLocationResponse,
         geometry: Optional[shapely.geometry.base.BaseGeometry],
         z: Optional[str] = None,
-    ) -> dict:
+    ) -> RiseLocationResponse:
         # need to deep copy so we don't change the dict object
         copy_to_return = deepcopy(location_response)
         indices_to_pop = set()
@@ -514,19 +546,191 @@ class LocationHelper:
 
     @staticmethod
     def filter_by_limit(
-        location_response: dict, limit: int, inplace: bool = False
-    ) -> dict:
+        location_response: RiseLocationResponse, limit: int, inplace: bool = False
+    ) -> RiseLocationResponse:
         if not inplace:
             location_response = deepcopy(location_response)
         location_response["data"] = location_response["data"][:limit]
         return location_response
 
+    @staticmethod
+    def filter_by_id(
+        location_response: RiseLocationResponse,
+        identifier: Optional[str] = None,
+        inplace: bool = False,
+    ) -> RiseLocationResponse:
+        if not inplace:
+            location_response = deepcopy(location_response)
+        location_response["data"] = [
+            location
+            for location in location_response["data"]
+            if str(location["attributes"]["_id"]) == identifier
+        ]
+        return location_response
+
+    @staticmethod
+    def to_geojson(location_response: RiseLocationResponse) -> dict:
+        features = []
+
+        for location_feature in location_response["data"]:
+            feature_as_geojson = {
+                "type": "Feature",
+                "id": location_feature["attributes"]["_id"],
+                "properties": {
+                    "Locations@iot.count": 1,
+                    "name": location_feature["attributes"]["locationName"],
+                    "id": location_feature["attributes"]["_id"],
+                    "Locations": [
+                        {
+                            "location": location_feature["attributes"][
+                                "locationCoordinates"
+                            ]
+                        }
+                    ],
+                },
+                "geometry": location_feature["attributes"]["locationCoordinates"],
+            }
+            features.append(feature_as_geojson)
+
+        return {"type": "FeatureCollection", "features": features}
+
+    @classmethod
+    def get_results(cls, catalogItemEndpoints: list[str]) -> dict[Url, JsonPayload]:
+        result_endpoints = [
+            f"https://data.usbr.gov/rise/api/result?page=1&itemsPerPage=25&itemId={get_trailing_id(endpoint)}"
+            for endpoint in catalogItemEndpoints
+        ]
+
+        fetched_result = asyncio.run(RISECache.get_or_fetch_group(result_endpoints))
+
+        return fetched_result
+
+    @staticmethod
+    def _fields_to_covjson() -> dict:
+        paramIdsToMetadata: dict[str, Parameter] = {}
+
+        fieldsToGeoJsonOutput = RISECache.get_fields()
+        for f in fieldsToGeoJsonOutput:
+            associatedData = fieldsToGeoJsonOutput[f]
+
+            _param: Parameter = {
+                "type": "Parameter",
+                "description": associatedData["title"],
+                "unit": {"symbol": associatedData["x-ogc-unit"]},
+                "observedProperty": {"id": "DUMMY_PLACEHOLDER"},
+            }
+            paramIdsToMetadata[associatedData["_id"]] = _param
+
+        return paramIdsToMetadata
+
+    @staticmethod
+    def to_covjson(location_response: RiseLocationResponse) -> CoverageCollection:
+        for location_feature in location_response["data"]:
+            locationIdToCatalogItemUrls = LocationHelper.get_catalogItemURLs(
+                location_response
+            )
+            allCatalogItemUrls = flatten_values(locationIdToCatalogItemUrls)
+
+            location_id = location_feature["attributes"]["_id"]
+            catalogItemUrls = locationIdToCatalogItemUrls[location_id]
+            allCatalogItems = asyncio.run(
+                RISECache.get_or_fetch_group(allCatalogItemUrls)
+            )
+
+            paramToItemId: dict[str, str] = {}
+
+            for catalogItem in allCatalogItems:
+                paramToItemId[catalogItem["data"]["attributes"]["parameterId"]] = (
+                    catalogItem
+                )
+
+            paramToCoverage: dict[str, CoverageRange] = {}
+
+            for param in locationIdToParams[location_id]:
+                assert param is not None
+
+                paramToCoverage[param] = {
+                    "axisNames": ["t"],
+                    "dataType": paramIdsToMetadata[param]["unit"]["symbol"],
+                    "shape": len(results),
+                    "values": results,
+                    "type": "NdArray",
+                }
+
+            coverage_item: Coverage = {
+                "type": "Coverage",
+                "domain": {
+                    "type": "Domain",
+                    "axes": {
+                        "composite": {
+                            "dataType": location_feature["attributes"][
+                                "locationCoordinates"
+                            ]["type"],
+                            "coordinates": ["x", "y"],
+                            "values": [
+                                [
+                                    location_feature["attributes"][
+                                        "locationCoordinates"
+                                    ]["coordinates"]
+                                ]
+                            ],
+                        },
+                        "t": {"values": []},
+                    },
+                },
+                "ranges": paramToCoverage,
+            }
+
+            allCoverages.append(coverage_item)
+
+        templated_response: CoverageCollection = {
+            "type": "CoverageCollection",
+            "parameters": LocationHelper._fields_to_covjson(),
+            "referencing": [
+                {
+                    "coordinates": ["x", "y"],
+                    "system": {
+                        "type": "GeographicCRS",
+                        "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+                    },
+                },
+                {
+                    "coordinates": ["z"],
+                    "system": {
+                        "type": "VerticalCRS",
+                        "cs": {
+                            "csAxes": [
+                                {
+                                    "name": {"en": "Pressure"},
+                                    "direction": "down",
+                                    "unit": {"symbol": "Pa"},
+                                }
+                            ]
+                        },
+                    },
+                },
+                {
+                    "coordinates": ["t"],
+                    "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+                },
+            ],
+            "domainType": "PolygonSeries",
+            "coverages": allCoverages,
+        }
+
+        return templated_response
+
 
 class CatalogItem:
     @classmethod
-    def get_parameter(cls, data: dict) -> dict[str, str] | None:
+    def get_parameter(
+        cls, data: RiseCatalogItemEndpointResponse
+    ) -> dict[str, str] | None:
         try:
             parameterName = data["data"]["attributes"]["parameterName"]
+            if not parameterName:
+                return None
+
             id = data["data"]["attributes"]["parameterId"]
             # NOTE id is returned as an int but needs to be a string in order to query it
             return {"id": str(id), "name": parameterName}

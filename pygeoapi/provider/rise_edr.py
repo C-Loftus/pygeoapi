@@ -30,16 +30,15 @@ from typing import ClassVar, Optional
 import requests
 
 from pygeoapi.provider.base import (
-    ProviderConnectionError,
     ProviderNoDataError,
     ProviderQueryError,
 )
 from pygeoapi.provider.base_edr import BaseEDRProvider
 from pygeoapi.provider.rise_edr_helpers import (
-    LocationHelper,
     RISECache,
     get_only_key,
     merge_pages,
+    LocationHelper,
 )
 
 
@@ -60,6 +59,11 @@ class RiseEDRProvider(BaseEDRProvider):
 
         :returns: pygeoapi.provider.base_edr.RiseEDRProvider
         """
+        provider_def = {
+            "name": "Rise EDR",
+            "type": "feature",
+            "data": "remote",
+        }
 
         super().__init__(provider_def)
 
@@ -77,17 +81,12 @@ class RiseEDRProvider(BaseEDRProvider):
     ):
         """
         Extract data from location
-
-        :param location_id: location id in RISE
-        :param datetime_ : temporal (datestamp or extent)
-        :param parameter-name : parameter name
-        :param crs : coordinate reference system string
-        :f data format for output
-
-        :returns: coverage data as specified format
         """
+        LOGGER.error(f"{kwargs}")
 
         if location_id:
+            # Instead of merging all location pages, just
+            # fetch the location associated with the ID
             response = requests.get(
                 RiseEDRProvider.LOCATION_API,
                 headers={"accept": "application/vnd.api+json"},
@@ -112,60 +111,24 @@ class RiseEDRProvider(BaseEDRProvider):
         if select_properties:
             response = LocationHelper.filter_by_properties(response, select_properties)
 
-        match format_:
-            case "json" | "GeoJSON" | _:
-                features = []
+        base = (
+            not crs
+            and not format_
+            and not select_properties
+            and not datetime_
+            and not location_id
+        )
 
-                for location_feature in response["data"]:
-                    feature_as_covjson = {
-                        "type": "Feature",
-                        "id": location_feature["attributes"]["_id"],
-                        "properties": {
-                            "Locations@iot.count": 1,
-                            "Locations": [
-                                {
-                                    "location": location_feature["attributes"][
-                                        "locationCoordinates"
-                                    ]
-                                }
-                            ],
-                        },
-                        "geometry": location_feature["attributes"][
-                            "locationCoordinates"
-                        ],
-                    }
-                    features.append(feature_as_covjson)
-
-                return {"type": "FeatureCollection", "features": features}
+        if format_ == "geojson" or format_ == "json" or not base:
+            return LocationHelper.to_geojson(response)
+        else:
+            return LocationHelper.to_covjson(response)
 
     def get_fields(self):
         if self._fields:
             return self._fields
 
-        pages = RISECache.get_or_fetch_all_pages(
-            "https://data.usbr.gov/rise/api/parameter",
-        )
-        res = merge_pages(pages)
-        for k, v in res.items():
-            if k is None or v is None:
-                raise ProviderConnectionError("Error fetching parameters")
-
-        self._fields: dict = {}
-        # get the value of a dict with one value without
-        # needed to know the key name. This is just the
-        # merged json payload
-        res: dict = next(iter(res.values()))
-        if res is None:
-            raise ProviderNoDataError
-
-        for item in res["data"]:
-            param = item["attributes"]
-            # TODO check if this should be a string or a number
-            self._fields[str(param["_id"])] = {
-                "type": param["parameterUnit"],
-                "title": param["parameterName"],
-                "x-ogc-unit": param["parameterUnit"],
-            }
+        self._fields = RISECache.get_fields()
 
         return self._fields
 
@@ -204,29 +167,7 @@ class RiseEDRProvider(BaseEDRProvider):
 
         match format_:
             case "json" | "GeoJSON" | _:
-                features = []
-
-                for location_feature in response["data"]:
-                    feature_as_covjson = {
-                        "type": "Feature",
-                        "id": location_feature["attributes"]["_id"],
-                        "properties": {
-                            "Locations@iot.count": 1,
-                            "Locations": [
-                                {
-                                    "location": location_feature["attributes"][
-                                        "locationCoordinates"
-                                    ]
-                                }
-                            ],
-                        },
-                        "geometry": location_feature["attributes"][
-                            "locationCoordinates"
-                        ],
-                    }
-                    features.append(feature_as_covjson)
-
-                return {"type": "FeatureCollection", "features": features}
+                return LocationHelper.to_geojson(response)
 
     @BaseEDRProvider.register()
     def area(
@@ -265,97 +206,21 @@ class RiseEDRProvider(BaseEDRProvider):
         response = LocationHelper.filter_by_wkt(response, wkt, z)
 
         match format_:
-            case "json" | "GeoJSON" | _:
-                features = []
-
-                for location_feature in response["data"]:
-                    feature_as_covjson = {
-                        "type": "Feature",
-                        "id": location_feature["attributes"]["_id"],
-                        "properties": {
-                            "Locations@iot.count": 1,
-                            "Locations": [
-                                {
-                                    "location": location_feature["attributes"][
-                                        "locationCoordinates"
-                                    ]
-                                }
-                            ],
-                        },
-                        "geometry": location_feature["attributes"][
-                            "locationCoordinates"
-                        ],
-                    }
-                    features.append(feature_as_covjson)
-
-                return {"type": "FeatureCollection", "features": features}
+            case "json" | "GeoJSON" | "" | None:
+                return LocationHelper.to_geojson(response)
+            case "covjson":
+                return LocationHelper.to_covjson(response)
 
     @BaseEDRProvider.register()
-    def items(
-        self,
-        bbox: list,
-        datetime_: Optional[str] = None,
-        limit: Optional[int] = None,
-        **kwargs,
-    ):
-        response = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
-        response = merge_pages(response)
-        response = get_only_key(response)
-        if response is None:
-            raise ProviderNoDataError
-
-        if datetime_:
-            response = LocationHelper.filter_by_date(response, datetime_)
-
-        if limit:
-            response = LocationHelper.filter_by_limit(response, limit)
-
-        response = LocationHelper.filter_by_bbox(response, bbox)
-
-        features = []
-
-        for location_feature in response["data"]:
-            feature_as_covjson = {
-                "type": "Feature",
-                "id": location_feature["attributes"]["_id"],
-                "properties": {
-                    "Locations@iot.count": 1,
-                    "Locations": [
-                        {
-                            "location": location_feature["attributes"][
-                                "locationCoordinates"
-                            ]
-                        }
-                    ],
-                },
-                "geometry": location_feature["attributes"]["locationCoordinates"],
-            }
-            features.append(feature_as_covjson)
-
-        return {"type": "FeatureCollection", "features": features}
-
-    def query(self, **kwargs):
+    def items(self, **kwargs):
         """
-        Extract data from collection collection
+        Retrieve a collection of items.
 
-        :param query_type: query type
-        :param wkt: `shapely.geometry` WKT geometry
-        :param datetime_: temporal (datestamp or extent)
-        :param select_properties: list of parameters
-        :param z: vertical level(s)
-        :param format_: data format of output
-        :param bbox: bbox geometry (for cube queries)
-        :param within: distance (for radius querires)
-        :param within_units: distance units (for radius querires)
-
-        :returns: coverage data as `dict` of CoverageJSON or native format
+        :param kwargs: Additional parameters for the request.
+        :returns: A GeoJSON representation of the items.
         """
-
-        try:
-            LOGGER.error(kwargs)
-            return getattr(self, kwargs.get("query_type"))(**kwargs)  # type: ignore
-        except AttributeError:
-            raise NotImplementedError("Query not implemented!")
+        # https://github.com/geopython/pygeoapi/issues/1748
+        pass
 
     def __repr__(self):
         return "<RiseEDRProvider>"

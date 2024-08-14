@@ -1,7 +1,11 @@
 import asyncio
 import requests
-from pygeoapi.provider.rise_edr_helpers import LocationHelper, fetch_url_group, flatten_values 
-import time 
+from pygeoapi.provider.rise_edr_helpers import (
+    LocationHelper,
+    fetch_url_group,
+    flatten_values,
+)
+import time
 
 url = "https://data.usbr.gov/rise/api/location"
 headers = {"accept": "application/vnd.api+json"}
@@ -10,7 +14,7 @@ response = requests.get(
     headers=headers,
 ).json()
 
-items = LocationHelper.get_catalogItems(response)
+items = LocationHelper.get_catalogItemURLs(response)
 
 counter = {i: len(v) for i, v in items.items()}
 

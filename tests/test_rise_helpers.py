@@ -1,10 +1,13 @@
+from gettext import Catalog
 import json
 
 import pytest
 import shapely.wkt
 
 from pygeoapi.provider.base import ProviderQueryError
+from pygeoapi.provider.rise_api_types import RiseLocationData, RiseLocationResponse
 from pygeoapi.provider.rise_edr_helpers import (
+    CatalogItem,
     LocationHelper,
     fetch_url_group,
     flatten_values,
@@ -28,7 +31,7 @@ import time
 def test_get_catalogItems():
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
-        items = LocationHelper.get_catalogItems(data)
+        items = LocationHelper.get_catalogItemURLs(data)
         assert len(items) == 25
 
 
@@ -67,7 +70,7 @@ def test_fetch_group():
 def test_get_parameters():
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
-        items = LocationHelper.get_catalogItems(data)
+        items = LocationHelper.get_catalogItemURLs(data)
         assert len(items) == 25
         assert len(flatten_values(items)) == 236
 
@@ -243,6 +246,56 @@ def test_parse_bbox():
         assert False
 
 
+def test_limit_items():
+    with open("tests/data/rise/location.json") as f:
+        data = json.load(f)
+
+        res1 = LocationHelper.filter_by_limit(data, limit=1)
+        assert len(res1["data"]) == 1
+
+        res2 = LocationHelper.filter_by_limit(data, limit=10)
+        assert len(res2["data"]) == 10
+        assert (
+            res2["data"][0]["attributes"]["_id"] == res1["data"][0]["attributes"]["_id"]
+        )
+
+
+def test_filter_by_id():
+    with open("tests/data/rise/location.json") as f:
+        data = json.load(f)
+
+        res = LocationHelper.filter_by_id(data, identifier="6902")
+        assert res["data"][0]["attributes"]["_id"] == 6902
+
+        res = LocationHelper.filter_by_id(data, identifier="6903")
+        assert len(res["data"]) == 0
+
+
+def test_get_results():
+    with open("tests/data/rise/location.json") as f:
+        data: RiseLocationResponse = json.load(f)
+
+        # "locationName": "Turquoise Lake and Sugar Loaf Dam",
+        one_location = LocationHelper.filter_by_id(data, identifier="498")
+
+        catItems = LocationHelper.get_catalogItemURLs(one_location)
+
+        for location in catItems:
+            for item in catItems[location]:
+                # we have the entire api url but we only want the id so
+                # we can pass the id to the result endpoint
+                raw_item = item.removeprefix(
+                    "https://data.usbr.gov/rise/api/catalog-item/"
+                )
+
+                res = CatalogItem.get_results(raw_item)
+                assert res is not None
+                assert res[0]["attributes"]["result"] == 34681  # type: ignore
+
+                # only test the first one for the sake of brevity
+                break
+
+
 def test_cache():
     url = "https://data.usbr.gov/rise/api/catalog-item/128562"
 
@@ -263,17 +316,3 @@ def test_cache():
 
     assert disk_time < network_time
     assert remote_res == disk_res
-
-
-def test_limit_items():
-    with open("tests/data/rise/location.json") as f:
-        data = json.load(f)
-
-        res1 = LocationHelper.filter_by_limit(data, limit=1)
-        assert len(res1["data"]) == 1
-
-        res2 = LocationHelper.filter_by_limit(data, limit=10)
-        assert len(res2["data"]) == 10
-        assert (
-            res2["data"][0]["attributes"]["_id"] == res1["data"][0]["attributes"]["_id"]
-        )

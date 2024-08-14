@@ -1,47 +1,163 @@
-from typing import Literal, TypedDict
+from enum import Enum, auto
+from typing import ClassVar, Literal, Optional, Protocol, TypedDict
 
 
 class EDRQuery(TypedDict):
     data_queries: list[dict]
 
 
+class RiseLocationDataAttributes(TypedDict):
+    _id: int
+    locationParentId: Optional[str]
+    locationName: str
+    locationDescription: str
+    locationStatusId: int
+    locationCoordinates: dict
+    elevation: Optional[str]
+    createDate: str
+    updateDate: str
+    horizontalDatum: dict
+    locationGeometry: dict
+    verticalDatum: str
+    locationTags: list[dict]
+    relatedLocationIds: Optional[str]
+    projectNames: list[str]
+    locationTypeName: str
+    locationRegionNames: list[str]
+    locationUnifiedRegionNames: list[str]
+
+
+class RiseCatalogItemEndpointResponseDataAttributes(TypedDict):
+    _id: str
+    itemTitle: str
+    itemDescription: str
+    itemRecordStatusId: int
+    isModeled: bool
+    hasProfile: bool
+    itemType: dict
+    parameterId: Optional[str]
+    parameterName: Optional[str]
+    parameterUnit: Optional[str]
+    parameterTimestep: Optional[str]
+    parameterTransformation: Optional[str]
+
+
+class RiseCatalogItemEndpointResponseData(TypedDict):
+    id: str
+    type: Literal["CatalogItem"]
+    attributes: RiseCatalogItemEndpointResponseDataAttributes
+
+
+class RiseCatalogItemEndpointResponse(TypedDict):
+    data: RiseCatalogItemEndpointResponseData
+
+
 class RiseCatalogItems(TypedDict):
-    data: list[dict[Literal["type"] : str, Literal["id"] : str]]
+    data: list[dict[Literal["type", "id"], str]]
 
 
-class RiseLocationDatapoint(TypedDict):
-    relationships: dict[Literal["catalogItems"] : RiseCatalogItems]
+class RiseLocationDataRelationships(TypedDict):
+    states: dict
+    locationUnifiedRegions: dict
+    catalogRecords: dict
+    catalogItems: RiseCatalogItems
+
+
+class RiseLocationData(TypedDict):
     id: str
     type: Literal["Location"]
+    attributes: RiseLocationDataAttributes
+    relationships: RiseLocationDataRelationships
 
 
 class RiseLocationResponse(TypedDict):
-    links: dict[
-        Literal["self"] | Literal["first"] | Literal["last"] | Literal["next"] : str
-    ]
+    links: dict[Literal["self", "first", "last", "next"], str]
     meta: dict[
-        Literal["totalItems"] : int,
-        Literal["itemsPerPage"] : int,
-        Literal["currentPage"] : int,
+        Literal["totalItems", "itemsPerPage", "currentPage"],
+        int,
     ]
-
-    data: list[RiseLocationDatapoint]
+    data: list[RiseLocationData]
 
 
 class EDRResponse(TypedDict):
     type: Literal["FeatureCollection"]
     features: list[
         dict[
-            Literal["type"] : Literal["Feature"],
-            Literal["id"] : str,
-            Literal["properties"] : dict,
-        ],
-        Literal["geometry"] : dict,  # type: ignore
+            Literal["type", "id", "properties"],
+            Literal["Feature"],
+        ]
     ]
 
 
-class LocationQueryOptions(TypedDict):
-    id: int
-    parameterName: list[str]
-    crs: str
-    datetime: str
+JsonPayload = dict
+Url = str
+
+
+class ZType(Enum):
+    SINGLE = auto()
+    # Every value between two values
+    RANGE = auto()
+    # An enumerated list that the value must be in
+    ENUMERATED_LIST = auto()
+
+
+class Parameter(TypedDict):
+    type: str
+    description: dict
+    unit: dict
+    observedProperty: dict
+
+
+class CoverageRange(TypedDict):
+    type: Literal["NdArray"]
+    dataType: Literal["float"]
+    axisNames: list[str]
+    shape: list[int]
+    values: list[float]
+
+
+class Coverage(TypedDict):
+    type: Literal["Coverage"]
+    domain: dict
+    ranges: dict[str, CoverageRange]
+
+
+class CoverageCollection(TypedDict):
+    type: str
+    parameters: dict[str, Parameter]
+    referencing: list
+    domainType: str
+    coverages: list[Coverage]
+
+
+class CacheInterface(Protocol):
+    """
+    A generic caching interface that supports key updates
+    and fetching url in groups. The client does not need
+    to be aware of whether or not the url is in the cache
+    """
+
+    db: ClassVar[str]
+
+    def __init__(self):
+        if type(self) is super().__class__:
+            raise TypeError(
+                "Cannot instantiate an instance of the cache. You must use static methods on the class itself"
+            )
+
+    @staticmethod
+    async def get_or_fetch(url, force_fetch=False) -> JsonPayload: ...
+
+    @staticmethod
+    async def get_or_fetch_group(
+        urls: list[str], force_fetch=False
+    ) -> dict[Url, JsonPayload]: ...
+
+    @staticmethod
+    def set(url: str, data) -> None: ...
+
+    @staticmethod
+    def clear(url: str) -> None: ...
+
+    @staticmethod
+    def contains(url: str) -> bool: ...
