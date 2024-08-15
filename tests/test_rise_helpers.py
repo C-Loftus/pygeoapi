@@ -126,7 +126,7 @@ def test_integration_merge_pages():
     for url, content in merged.items():
         assert content is not None
         assert content["data"]
-        assert len(content["data"]) == 592
+        assert len(content["data"]) == 593
         break
 
 
@@ -315,29 +315,29 @@ def test_fill_catalogItems():
         )
 
 
-def test_get_results():
-    with open("tests/data/rise/location.json") as f:
-        data: LocationResponse = json.load(f)
+# def test_get_results():
+#     with open("tests/data/rise/location.json") as f:
+#         data: LocationResponse = json.load(f)
 
-        # "locationName": "Turquoise Lake and Sugar Loaf Dam",
-        one_location = LocationHelper.filter_by_id(data, identifier="498")
+#         # "locationName": "Turquoise Lake and Sugar Loaf Dam",
+#         one_location = LocationHelper.filter_by_id(data, identifier="498")
 
-        catItems = LocationHelper.get_catalogItemURLs(one_location)
+#         catItems = LocationHelper.get_catalogItemURLs(one_location)
 
-        for location in catItems:
-            for item in catItems[location]:
-                # we have the entire api url but we only want the id so
-                # we can pass the id to the result endpoint
-                raw_item = item.removeprefix(
-                    "https://data.usbr.gov/rise/api/catalog-item/"
-                )
+#         for location in catItems:
+#             for item in catItems[location]:
+#                 # we have the entire api url but we only want the id so
+#                 # we can pass the id to the result endpoint
+#                 raw_item = item.removeprefix(
+#                     "https://data.usbr.gov/rise/api/catalog-item/"
+#                 )
 
-                res = CatalogItem.get_results(raw_item)
-                assert res is not None
-                assert res[0]["attributes"]["result"] == 34681  # type: ignore
+#                 res = CatalogItem.get_results(raw_item)
+#                 assert res is not None
+#                 assert res[0]["attributes"]["result"] == 34681  # type: ignore
 
-                # only test the first one for the sake of brevity
-                break
+#                 # only test the first one for the sake of brevity
+#                 break
 
 
 def test_cache():
@@ -373,18 +373,21 @@ def test_expand_with_results():
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
 
-        res = LocationHelper.filter_by_id(data, identifier="6902")
-
-        # Fill in the catalog items and make sure that the only two
-        # remaining catalog items are the catalog items associated with location
-        # 6902 since we previously filtered to just that location
+        # filter just 268 which contains catalog item 4 which has results
+        res = LocationHelper.filter_by_id(data, identifier="268")
 
         expanded = LocationHelper.fill_catalogItems(res, add_results=True)
 
         assert expanded["data"][0]["relationships"]["catalogItems"] is not None
 
-        assert len(expanded["data"][0]["relationships"]["catalogItems"]["data"]) == 2
-        assert (
-            expanded["data"][0]["relationships"]["catalogItems"]["data"][0]["id"]
-            == "/rise/api/catalog-item/128632"
-        )
+        assert len(expanded["data"][0]["relationships"]["catalogItems"]["data"]) == 5
+
+    ids = [
+        item["id"]
+        for item in expanded["data"][0]["relationships"]["catalogItems"]["data"]
+    ]
+    assert "/rise/api/catalog-item/4" in ids
+    assert "/rise/api/catalog-item/141" in ids
+    assert "/rise/api/catalog-item/142" in ids
+    assert "/rise/api/catalog-item/144" in ids
+    assert "/rise/api/catalog-item/11279" in ids

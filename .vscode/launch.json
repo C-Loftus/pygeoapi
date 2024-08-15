@@ -1,4 +1,5 @@
 {
+    "version": "0.2.0",
     "configurations": [
         {
             "name": "Python Debugger: Flask",
@@ -67,7 +68,7 @@
             "env": {
                 "PYGEOAPI_CONFIG": "local.config.yml",
                 "PYGEOAPI_OPENAPI": "local.openapi.yml"
-            },
-        },
+            }
+        }
     ]
 }

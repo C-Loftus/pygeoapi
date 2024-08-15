@@ -35,7 +35,7 @@ from typing import Optional
 import requests
 
 from pygeoapi.provider.base import BaseProvider, ProviderNoDataError, ProviderQueryError
-from pygeoapi.provider.rise_api_types import RiseLocationResponse
+from pygeoapi.provider.rise_api_types import LocationResponse
 from pygeoapi.provider.rise_edr import RiseEDRProvider
 from pygeoapi.provider.rise_edr_helpers import (
     LocationHelper,
@@ -78,11 +78,11 @@ class RiseProvider(BaseProvider):
             if not single_endpoint_response.ok:
                 raise ProviderQueryError(single_endpoint_response.text)
             else:
-                response: RiseLocationResponse = single_endpoint_response.json()
+                response: LocationResponse = single_endpoint_response.json()
         else:
             all_location_responses = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
             merged_response = merge_pages(all_location_responses)
-            response: RiseLocationResponse = get_only_key(merged_response)
+            response: LocationResponse = get_only_key(merged_response)
             if response is None:
                 raise ProviderNoDataError
 

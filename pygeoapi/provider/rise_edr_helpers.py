@@ -613,11 +613,11 @@ class LocationHelper:
         new = deepcopy(response)
 
         locationToCatalogItemUrls: dict[str, list[str]] = (
-            LocationHelper.get_catalogItemURLs(response)
+            LocationHelper.get_catalogItemURLs(new)
         )
         catalogItemUrls = flatten_values(locationToCatalogItemUrls)
         catalogItemUrlToResponse = asyncio.run(
-            RISECache.get_or_fetch_group(catalogItemUrls)
+            RISECache.get_or_fetch_group(catalogItemUrls, force_fetch=True)
         )
 
         if add_results:
@@ -635,15 +635,20 @@ class LocationHelper:
                     new["data"][i]["relationships"]["catalogItems"]["data"][j] = (
                         fetchedData
                     )
-                    if add_results:
-                        new["data"][i]["relationships"]["catalogItems"]["data"][j][
-                            "results"
-                        ] = results[url]["data"]  # type: ignore
 
                 except KeyError:
                     # a few locations have invalid catalog items so we can't do anything with them
                     LOGGER.error(f"Missing key for catalog item {url} in {location}")
                     continue
+
+                if add_results:
+                    base_catalog_item_j = new["data"][i]["relationships"][
+                        "catalogItems"
+                    ]["data"][j]
+                    results_for_catalog_item_j = results[
+                        getResultUrlFromCatalogUrl(url)
+                    ]["data"]
+                    base_catalog_item_j["results"] = results_for_catalog_item_j
 
         return new
 
