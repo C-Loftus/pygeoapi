@@ -6,7 +6,7 @@ class EDRQuery(TypedDict):
     data_queries: list[dict]
 
 
-class RiseLocationDataAttributes(TypedDict):
+class LocationDataAttributes(TypedDict):
     _id: int
     locationParentId: Optional[str]
     locationName: str
@@ -27,7 +27,7 @@ class RiseLocationDataAttributes(TypedDict):
     locationUnifiedRegionNames: list[str]
 
 
-class RiseCatalogItemEndpointResponseDataAttributes(TypedDict):
+class CatalogItemEndpointResponseDataAttributes(TypedDict):
     _id: str
     itemTitle: str
     itemDescription: str
@@ -42,44 +42,44 @@ class RiseCatalogItemEndpointResponseDataAttributes(TypedDict):
     parameterTransformation: Optional[str]
 
 
-class RiseCatalogItemEndpointResponseData(TypedDict):
+class CatalogItemResponseData(TypedDict):
     id: str
     type: Literal["CatalogItem"]
-    attributes: RiseCatalogItemEndpointResponseDataAttributes
+    attributes: CatalogItemEndpointResponseDataAttributes
+
+    # only have this key in here if it is coming from the catalog endpoint
+    results: dict
 
 
-class RiseCatalogItemEndpointResponse(TypedDict):
-    data: RiseCatalogItemEndpointResponseData
+class CatalogItemsResponse(TypedDict):
+    # we can't do a union of typeddicts so we have to settle for this
+    data: dict | list
 
 
-class RiseCatalogItems(TypedDict):
-    data: list[dict[Literal["type", "id"], str]]
-
-
-class RiseLocationDataRelationships(TypedDict):
+class LocationDataRelationships(TypedDict):
     states: dict
     locationUnifiedRegions: dict
     catalogRecords: dict
-    catalogItems: RiseCatalogItems
+    catalogItems: CatalogItemsResponse
 
 
-class RiseLocationData(TypedDict):
+class LocationData(TypedDict):
     id: str
     type: Literal["Location"]
-    attributes: RiseLocationDataAttributes
-    relationships: RiseLocationDataRelationships
+    attributes: LocationDataAttributes
+    relationships: LocationDataRelationships
 
 
-class RiseLocationResponse(TypedDict):
+class LocationResponse(TypedDict):
     links: dict[Literal["self", "first", "last", "next"], str]
     meta: dict[
         Literal["totalItems", "itemsPerPage", "currentPage"],
         int,
     ]
-    data: list[RiseLocationData]
+    data: list[LocationData]
 
 
-class EDRResponse(TypedDict):
+class GeoJsonResponse(TypedDict):
     type: Literal["FeatureCollection"]
     features: list[
         dict[

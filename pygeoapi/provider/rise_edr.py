@@ -82,7 +82,6 @@ class RiseEDRProvider(BaseEDRProvider):
         """
         Extract data from location
         """
-        LOGGER.error(f"{kwargs}")
 
         if location_id:
             # Instead of merging all location pages, just
@@ -111,18 +110,63 @@ class RiseEDRProvider(BaseEDRProvider):
         if select_properties:
             response = LocationHelper.filter_by_properties(response, select_properties)
 
-        base = (
-            not crs
-            and not format_
-            and not select_properties
-            and not datetime_
-            and not location_id
-        )
+        query_args = [crs, format_, select_properties, datetime_, location_id]
 
-        if format_ == "geojson" or format_ == "json" or not base:
-            return LocationHelper.to_geojson(response)
-        else:
-            return LocationHelper.to_covjson(response)
+        # if format_ == "geojson" or format_ == "json" or not any(query_args):
+        # return LocationHelper.to_geojson(response)
+
+        return {
+            "type": "Coverage",
+            "domain": {
+                "type": "Domain",
+                "domainType": "Grid",
+                "axes": {
+                    "x": {"values": [-10, -5, 0]},
+                    "y": {"values": [40, 50]},
+                    "z": {"values": [5]},
+                    "t": {"values": ["2010-01-01T00:12:20Z"]},
+                },
+                "referencing": [
+                    {
+                        "coordinates": ["y", "x", "z"],
+                        "system": {
+                            "type": "GeographicCRS",
+                            "id": "http://www.opengis.net/def/crs/EPSG/0/4979",
+                        },
+                    },
+                    {
+                        "coordinates": ["t"],
+                        "system": {"type": "TemporalRS", "calendar": "Gregorian"},
+                    },
+                ],
+            },
+            "parameters": {
+                "ICEC": {
+                    "type": "Parameter",
+                    "description": {"en": "Sea Ice concentration (ice=1;no ice=0)"},
+                    "unit": {
+                        "label": {"en": "Ratio"},
+                        "symbol": {
+                            "value": "1",
+                            "type": "http://www.opengis.net/def/uom/UCUM/",
+                        },
+                    },
+                    "observedProperty": {
+                        "id": "http://vocab.nerc.ac.uk/standard_name/sea_ice_area_fraction/",
+                        "label": {"en": "Sea Ice Concentration"},
+                    },
+                }
+            },
+            "ranges": {
+                "ICEC": {
+                    "type": "NdArray",
+                    "dataType": "float",
+                    "axisNames": ["t", "z", "y", "x"],
+                    "shape": [1, 1, 2, 3],
+                    "values": [0.5, 0.6, 0.4, 0.6, 0.2, None],
+                }
+            },
+        }
 
     def get_fields(self):
         if self._fields:

@@ -3,7 +3,7 @@ import datetime
 import json
 import logging
 import math
-from typing import ClassVar, Mapping, Optional, Tuple
+from typing import ClassVar, Optional, Tuple
 import shapely.wkt
 from typing_extensions import assert_never
 
@@ -24,9 +24,8 @@ from pygeoapi.provider.rise_api_types import (
     CoverageCollection,
     CoverageRange,
     JsonPayload,
+    LocationResponse,
     Parameter,
-    RiseCatalogItemEndpointResponse,
-    RiseLocationResponse,
     Url,
     ZType,
 )
@@ -98,6 +97,10 @@ def get_only_key(mapper: dict):
 
 def get_trailing_id(url: str) -> str:
     return url.split("/")[-1]
+
+
+def getResultUrlFromCatalogUrl(url: str) -> str:
+    return f"https://data.usbr.gov/rise/api/result?itemId={get_trailing_id(url)}"
 
 
 def merge_pages(pages: dict[Url, JsonPayload]):
@@ -300,7 +303,7 @@ catalogItemEndpoint = str
 class LocationHelper:
     @staticmethod
     def get_catalogItemURLs(
-        location_response: RiseLocationResponse,
+        location_response: LocationResponse,
     ) -> dict[locationId, list[catalogItemEndpoint]]:
         lookup: dict[str, list[str]] = {}
         if not isinstance(location_response["data"], list):
@@ -331,14 +334,14 @@ class LocationHelper:
 
     @staticmethod
     def get_parameters(
-        allLocations: RiseLocationResponse,
+        allLocations: LocationResponse,
     ) -> dict[locationId, paramIdList]:
         locationsToCatalogItems = LocationHelper.get_catalogItemURLs(allLocations)
 
         locationToParams: dict[str, list[str | None]] = {}
 
         for location, catalogItems in locationsToCatalogItems.items():
-            urlItemMapper: dict[str, RiseCatalogItemEndpointResponse] = asyncio.run(
+            urlItemMapper: dict[str, dict] = asyncio.run(
                 RISECache.get_or_fetch_group(catalogItems)
             )  # type: ignore since the function doesn't know it is specifically for a catalogitem, but we know it is
 
@@ -365,9 +368,7 @@ class LocationHelper:
         return locationToParams
 
     @staticmethod
-    def drop_location(
-        response: RiseLocationResponse, location_id: int
-    ) -> RiseLocationResponse:
+    def drop_location(response: LocationResponse, location_id: int) -> LocationResponse:
         new = response.copy()
 
         filtered_locations = [
@@ -380,8 +381,8 @@ class LocationHelper:
 
     @staticmethod
     def filter_by_properties(
-        response: RiseLocationResponse, select_properties: list[str] | str
-    ) -> RiseLocationResponse:
+        response: LocationResponse, select_properties: list[str] | str
+    ) -> LocationResponse:
         list_of_properties: list[str] = (
             [select_properties]
             if isinstance(select_properties, str)
@@ -398,8 +399,8 @@ class LocationHelper:
 
     @staticmethod
     def filter_by_date(
-        location_response: RiseLocationResponse, datetime_: str
-    ) -> RiseLocationResponse:
+        location_response: LocationResponse, datetime_: str
+    ) -> LocationResponse:
         """
         Filter by date
         """
@@ -470,19 +471,19 @@ class LocationHelper:
 
     @staticmethod
     def filter_by_wkt(
-        location_response: RiseLocationResponse,
+        location_response: LocationResponse,
         wkt: Optional[str] = None,
         z: Optional[str] = None,
-    ) -> RiseLocationResponse:
+    ) -> LocationResponse:
         parsed_geo = shapely.wkt.loads(str(wkt)) if wkt else None
         return LocationHelper._filter_by_geometry(location_response, parsed_geo, z)
 
     @staticmethod
     def filter_by_bbox(
-        location_response: RiseLocationResponse,
+        location_response: LocationResponse,
         bbox: Optional[list] = None,
         z: Optional[str] = None,
-    ) -> RiseLocationResponse:
+    ) -> LocationResponse:
         if bbox:
             parse_result = parse_bbox(bbox)
             shapely_box = parse_result[0] if parse_result else None
@@ -496,10 +497,10 @@ class LocationHelper:
 
     @staticmethod
     def _filter_by_geometry(
-        location_response: RiseLocationResponse,
+        location_response: LocationResponse,
         geometry: Optional[shapely.geometry.base.BaseGeometry],
         z: Optional[str] = None,
-    ) -> RiseLocationResponse:
+    ) -> LocationResponse:
         # need to deep copy so we don't change the dict object
         copy_to_return = deepcopy(location_response)
         indices_to_pop = set()
@@ -507,7 +508,7 @@ class LocationHelper:
 
         for i, v in enumerate(location_response["data"]):
             try:
-                elevation = int(float(v["attributes"]["elevation"]))
+                elevation = int(float(v["attributes"]["elevation"]))  # type: ignore
             except (ValueError, TypeError):
                 LOGGER.error(f"Invalid elevation {v} for location {i}")
                 elevation = None
@@ -546,8 +547,8 @@ class LocationHelper:
 
     @staticmethod
     def filter_by_limit(
-        location_response: RiseLocationResponse, limit: int, inplace: bool = False
-    ) -> RiseLocationResponse:
+        location_response: LocationResponse, limit: int, inplace: bool = False
+    ) -> LocationResponse:
         if not inplace:
             location_response = deepcopy(location_response)
         location_response["data"] = location_response["data"][:limit]
@@ -555,10 +556,10 @@ class LocationHelper:
 
     @staticmethod
     def filter_by_id(
-        location_response: RiseLocationResponse,
+        location_response: LocationResponse,
         identifier: Optional[str] = None,
         inplace: bool = False,
-    ) -> RiseLocationResponse:
+    ) -> LocationResponse:
         if not inplace:
             location_response = deepcopy(location_response)
         location_response["data"] = [
@@ -569,7 +570,7 @@ class LocationHelper:
         return location_response
 
     @staticmethod
-    def to_geojson(location_response: RiseLocationResponse) -> dict:
+    def to_geojson(location_response: LocationResponse) -> dict:
         features = []
 
         for location_feature in location_response["data"]:
@@ -594,8 +595,8 @@ class LocationHelper:
 
         return {"type": "FeatureCollection", "features": features}
 
-    @classmethod
-    def get_results(cls, catalogItemEndpoints: list[str]) -> dict[Url, JsonPayload]:
+    @staticmethod
+    def get_results(catalogItemEndpoints: list[str]) -> dict[Url, JsonPayload]:
         result_endpoints = [
             f"https://data.usbr.gov/rise/api/result?page=1&itemsPerPage=25&itemId={get_trailing_id(endpoint)}"
             for endpoint in catalogItemEndpoints
@@ -604,6 +605,47 @@ class LocationHelper:
         fetched_result = asyncio.run(RISECache.get_or_fetch_group(result_endpoints))
 
         return fetched_result
+
+    @staticmethod
+    def fill_catalogItems(response: LocationResponse, add_results: bool = False):
+        """Given a location, fill in the catalog items within it for it can be more easily used for complex joins"""
+
+        new = deepcopy(response)
+
+        locationToCatalogItemUrls: dict[str, list[str]] = (
+            LocationHelper.get_catalogItemURLs(response)
+        )
+        catalogItemUrls = flatten_values(locationToCatalogItemUrls)
+        catalogItemUrlToResponse = asyncio.run(
+            RISECache.get_or_fetch_group(catalogItemUrls)
+        )
+
+        if add_results:
+            resultUrls = [getResultUrlFromCatalogUrl(url) for url in catalogItemUrls]
+            results = asyncio.run(RISECache.get_or_fetch_group(resultUrls))
+
+        for i, location in enumerate(new["data"]):
+            for j, catalogitem in enumerate(
+                location["relationships"]["catalogItems"]["data"]
+            ):
+                # url = https://data.usbr.gov/rise/api/catalog-record/8025   if id": "/rise/api/catalog-record/8025"
+                url: str = "https://data.usbr.gov" + catalogitem["id"]
+                try:
+                    fetchedData = catalogItemUrlToResponse[url]["data"]
+                    new["data"][i]["relationships"]["catalogItems"]["data"][j] = (
+                        fetchedData
+                    )
+                    if add_results:
+                        new["data"][i]["relationships"]["catalogItems"]["data"][j][
+                            "results"
+                        ] = results[url]["data"]  # type: ignore
+
+                except KeyError:
+                    # a few locations have invalid catalog items so we can't do anything with them
+                    LOGGER.error(f"Missing key for catalog item {url} in {location}")
+                    continue
+
+        return new
 
     @staticmethod
     def _fields_to_covjson() -> dict:
@@ -624,36 +666,27 @@ class LocationHelper:
         return paramIdsToMetadata
 
     @staticmethod
-    def to_covjson(location_response: RiseLocationResponse) -> CoverageCollection:
-        for location_feature in location_response["data"]:
-            locationIdToCatalogItemUrls = LocationHelper.get_catalogItemURLs(
-                location_response
-            )
-            allCatalogItemUrls = flatten_values(locationIdToCatalogItemUrls)
+    def to_covjson(location_response: LocationResponse) -> CoverageCollection:
+        # Fill in the catalog items so we can more easily join across them
+        expanded_response = LocationHelper.fill_catalogItems(location_response)
 
-            location_id = location_feature["attributes"]["_id"]
-            catalogItemUrls = locationIdToCatalogItemUrls[location_id]
-            allCatalogItems = asyncio.run(
-                RISECache.get_or_fetch_group(allCatalogItemUrls)
-            )
+        allCoverages: list[Coverage] = []
 
-            paramToItemId: dict[str, str] = {}
-
-            for catalogItem in allCatalogItems:
-                paramToItemId[catalogItem["data"]["attributes"]["parameterId"]] = (
-                    catalogItem
-                )
-
+        for location_feature in expanded_response["data"]:
             paramToCoverage: dict[str, CoverageRange] = {}
 
-            for param in locationIdToParams[location_id]:
+            for param in location_feature["relationships"]["catalogItems"]["data"]:
                 assert param is not None
 
-                paramToCoverage[param] = {
+                id: str = param["attributes"]["_id"]  # type: ignore ; seems to be an error with pylance type narrowing
+
+                results = []
+
+                paramToCoverage[id] = {
                     "axisNames": ["t"],
-                    "dataType": paramIdsToMetadata[param]["unit"]["symbol"],
-                    "shape": len(results),
-                    "values": results,
+                    "dataType": "float",
+                    "shape": [len(results)],
+                    "values": [1.0],
                     "type": "NdArray",
                 }
 
@@ -723,9 +756,7 @@ class LocationHelper:
 
 class CatalogItem:
     @classmethod
-    def get_parameter(
-        cls, data: RiseCatalogItemEndpointResponse
-    ) -> dict[str, str] | None:
+    def get_parameter(cls, data: dict) -> dict[str, str] | None:
         try:
             parameterName = data["data"]["attributes"]["parameterName"]
             if not parameterName:

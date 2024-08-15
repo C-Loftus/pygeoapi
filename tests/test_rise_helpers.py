@@ -1,19 +1,19 @@
-from gettext import Catalog
 import json
 
 import pytest
 import shapely.wkt
 
 from pygeoapi.provider.base import ProviderQueryError
-from pygeoapi.provider.rise_api_types import RiseLocationData, RiseLocationResponse
+from pygeoapi.provider.rise_api_types import LocationResponse
 from pygeoapi.provider.rise_edr_helpers import (
     CatalogItem,
+    CacheInterface,
     LocationHelper,
     fetch_url_group,
     flatten_values,
     fetch_url,
     RISECache,
-    CacheInterface,
+    getResultUrlFromCatalogUrl,
     merge_pages,
     parse_bbox,
     parse_z,
@@ -271,9 +271,53 @@ def test_filter_by_id():
         assert len(res["data"]) == 0
 
 
+def test_get_or_fetch_group():
+    group = [
+        "https://data.usbr.gov/rise/api/catalog-item/128632",
+        "https://data.usbr.gov/rise/api/location?page=1&itemsPerPage=25",
+    ]
+
+    urlToContent = asyncio.run(RISECache.get_or_fetch_group(group))
+
+    assert len(urlToContent.values()) == 2
+    assert urlToContent[group[1]]["data"][0]["id"] == "/rise/api/location/509"
+
+
+def test_fill_catalogItems():
+    with open("tests/data/rise/location.json") as f:
+        data = json.load(f)
+        assert len(data["data"]) == 25
+
+        res = LocationHelper.filter_by_id(data, identifier="6902")
+        assert res["data"][0]["attributes"]["_id"] == 6902
+        assert len(res["data"]) == 1
+        assert (
+            res["data"][0]["relationships"]["catalogItems"]["data"][0]["id"]
+            == "/rise/api/catalog-item/128632"
+        )
+
+        # Fill in the catalog items and make sure that the only two
+        # remaining catalog items are the catalog items associated with location
+        # 6902 since we previously filtered to just that location
+
+        expanded = LocationHelper.fill_catalogItems(res)
+
+        assert expanded["data"][0]["relationships"]["catalogItems"] is not None
+
+        assert len(expanded["data"][0]["relationships"]["catalogItems"]["data"]) == 2
+        assert (
+            expanded["data"][0]["relationships"]["catalogItems"]["data"][0]["id"]
+            == "/rise/api/catalog-item/128632"
+        )
+        assert (
+            expanded["data"][0]["relationships"]["catalogItems"]["data"][1]["id"]
+            == "/rise/api/catalog-item/128633"
+        )
+
+
 def test_get_results():
     with open("tests/data/rise/location.json") as f:
-        data: RiseLocationResponse = json.load(f)
+        data: LocationResponse = json.load(f)
 
         # "locationName": "Turquoise Lake and Sugar Loaf Dam",
         one_location = LocationHelper.filter_by_id(data, identifier="498")
@@ -316,3 +360,31 @@ def test_cache():
 
     assert disk_time < network_time
     assert remote_res == disk_res
+
+
+def test_make_result():
+    url = "https://data.usbr.gov/rise/api/catalog-item/128632"
+    res = getResultUrlFromCatalogUrl(url)
+    resp = requests.get(res)
+    assert resp.ok
+
+
+def test_expand_with_results():
+    with open("tests/data/rise/location.json") as f:
+        data = json.load(f)
+
+        res = LocationHelper.filter_by_id(data, identifier="6902")
+
+        # Fill in the catalog items and make sure that the only two
+        # remaining catalog items are the catalog items associated with location
+        # 6902 since we previously filtered to just that location
+
+        expanded = LocationHelper.fill_catalogItems(res, add_results=True)
+
+        assert expanded["data"][0]["relationships"]["catalogItems"] is not None
+
+        assert len(expanded["data"][0]["relationships"]["catalogItems"]["data"]) == 2
+        assert (
+            expanded["data"][0]["relationships"]["catalogItems"]["data"][0]["id"]
+            == "/rise/api/catalog-item/128632"
+        )
