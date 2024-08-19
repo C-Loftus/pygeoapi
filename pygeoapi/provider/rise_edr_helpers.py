@@ -673,7 +673,7 @@ class LocationHelper:
     @staticmethod
     def to_covjson(location_response: LocationResponse) -> CoverageCollection:
         # Fill in the catalog items so we can more easily join across them
-        expanded_response = LocationHelper.fill_catalogItems(location_response)
+        expanded_response = LocationHelper.fill_catalogItems(location_response, add_results=True)
 
         allCoverages: list[Coverage] = []
 
@@ -685,8 +685,10 @@ class LocationHelper:
 
                 id: str = param["attributes"]["_id"]  # type: ignore ; seems to be an error with pylance type narrowing
 
-                results = []
+                results = [result for result in param["attributes"]["results"]]
 
+                results = [result['result'] for result in param["results"]]
+                
                 paramToCoverage[id] = {
                     "axisNames": ["t"],
                     "dataType": "float",

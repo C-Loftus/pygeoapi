@@ -3,10 +3,10 @@
 {% block crumbs %}{{ super() }}
 / <a href="{{ data['collections_path'] }}">{% trans %}Collections{% endtrans %}</a>
 {% for link in data['links'] %}
-{% if link.rel == 'collection' %} /
-<a href="{{ data['dataset_path'] }}">{{ link['title'] | truncate( 25 ) }}</a>
-{% set col_title = link['title'] %}
-{% endif %}
+  {% if link.rel == 'collection' %} /
+    <a href="{{ data['dataset_path'] }}">{{ link['title'] | truncate( 25 ) }}</a>
+    {% set col_title = link['title'] %}
+  {% endif %}
 {% endfor %}
 / <a href="{{ data['query_path']}}">{% trans query_type=data.query_type %}{{ query_type }}{% endtrans %}</a>
 {% endblock %}
@@ -30,7 +30,7 @@
 
 {% block body %}
   <section id="coverage">
-    {% if data.features or data.coverages %}
+    {% if data.features or data.coverages or data.ranges or data.references %}
     <div id="coverages-map"></div>
     {% else %}
     <div class="row col-sm-12">
@@ -71,11 +71,6 @@
           }).addTo(map)
         }
       })
-      .catch(e => {
-        map.fire('dataload');
-        console.log(e);
-      });
-  }
 
 
     displayCovJSON(JSON.parse('{{ data | to_json | safe }}'), {display: true})
@@ -273,87 +268,10 @@
     {% elif data.type == "Feature" or data.type == "FeatureCollection" %}
     var geojson_data = {{ data | to_json | safe }};
 
-    return layer
-  }
-  function removeLayers() {
-    for (let layer of layersInControl) {
-      layerControl.removeLayer(layer)
-      if (map.hasLayer(layer)) {
-        // FIXME leaflet's internal state breaks if layers or controls throw exceptions in onAdd()
-        // -> could be prevented by linting CovJSON before-hand
-        try {
-          map.removeLayer(layer)
-        } catch (e) { }
-      }
-    }
-    layersInControl = new Set()
-  }
-
-  function zoomToLayers(layers) {
-    let bnds = layers.map(l => l.getBounds())
-    let bounds = L.latLngBounds(bnds)
-    let opts = {
-      padding: L.point(10, 10)
-    }
-    if (bounds.getWest() === bounds.getEast() && bounds.getSouth() === bounds.getNorth()) {
-      opts.maxZoom = 5
-    }
-    map.fitBounds(bounds, opts)
-  }
-
-  function isVerticalProfile(cov) {
-    return cov.domainType === C.COVJSON_VERTICALPROFILE
-  }
-
-  function isTimeSeries(cov) {
-    return cov.domainType === C.COVJSON_POINTSERIES || cov.domainType === C.COVJSON_POLYGONSERIES
-  }
-  window.api = {
-    map,
-    layers: coverageLayersOnMap
-  }
-
-  // Wire up coverage value popup
-  let valuePopup = new C.DraggableValuePopup({
-    className: 'leaflet-popup-draggable',
-    layers: [...coverageLayersOnMap]
-  })
-
-  function closeValuePopup() {
-    if (map.hasLayer(valuePopup)) {
-      map.closePopup(valuePopup)
-    }
-  }
-
-  // click event needed for Grid layer (can't use bindPopup there)
-  map.on('singleclick', e => {
-    valuePopup.setLatLng(e.latlng).openOn(map)
-  })
-  map.on('covlayercreate', e => {
-    // some layers already have a plot popup bound to it, ignore those
-    if (!e.layer.getPopup()) {
-      e.layer.bindPopup(valuePopup)
-    }
-  })
-  map.on('covlayeradd', e => {
-    valuePopup.addCoverageLayer(e.layer)
-  })
-  map.on('covlayerremove', e => {
-    valuePopup.removeCoverageLayer(e.layer)
-  })
-
-  map.on('error', e => {
-    if (e.error?.message) {
-      editor.setError(e.error.message)
-    }
-  })
-  {% elif data.type == "Feature" or data.type == "FeatureCollection" %}
-  var geojson_data = {{ data | to_json | safe }};
-
-  var items = new L.GeoJSON(geojson_data, {
-    onEachFeature: function (feature, layer) {
-      var html = '<span>' + {% if data['title_field'] %} feature['properties']['{{ data['title_field'] }}'] {% else %} feature.id {% endif %} + '</span>';
-  layer.bindPopup(html);
+    var items = new L.GeoJSON(geojson_data, {
+        onEachFeature: function (feature, layer) {
+            var html = '<span>' + {% if data['title_field'] %} feature['properties']['{{ data['title_field'] }}'] {% else %} feature.id {% endif %} + '</span>';
+            layer.bindPopup(html);
         }
     });
     {% if data.type == "FeatureCollection" and data.features and data.features[0]['geometry']['type'] == 'Point' %}

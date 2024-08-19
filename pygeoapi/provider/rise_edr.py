@@ -82,7 +82,6 @@ class RiseEDRProvider(BaseEDRProvider):
         """
         Extract data from location
         """
-
         if location_id:
             # Instead of merging all location pages, just
             # fetch the location associated with the ID
@@ -96,6 +95,7 @@ class RiseEDRProvider(BaseEDRProvider):
                 raise ProviderQueryError(response.text)
             else:
                 response = response.json()
+
         else:
             response = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
             response = merge_pages(response)
@@ -110,62 +110,126 @@ class RiseEDRProvider(BaseEDRProvider):
         if select_properties:
             response = LocationHelper.filter_by_properties(response, select_properties)
 
-        # query_args = [crs, format_, select_properties, datetime_, location_id]
-        # if format_ == "geojson" or format_ == "json" or not any(query_args):
-        # return LocationHelper.to_geojson(response)
-
-        return {
-            "type": "Coverage",
-            "domain": {
-                "type": "Domain",
-                "domainType": "Grid",
-                "axes": {
-                    "x": {"values": [-10, -5, 0]},
-                    "y": {"values": [40, 50]},
-                    "z": {"values": [5]},
-                    "t": {"values": ["2010-01-01T00:12:20Z"]},
-                },
-                "referencing": [
-                    {
-                        "coordinates": ["y", "x", "z"],
-                        "system": {
-                            "type": "GeographicCRS",
-                            "id": "http://www.opengis.net/def/crs/EPSG/0/4979",
-                        },
-                    },
-                    {
-                        "coordinates": ["t"],
-                        "system": {"type": "TemporalRS", "calendar": "Gregorian"},
-                    },
-                ],
-            },
-            "parameters": {
-                "ICEC": {
-                    "type": "Parameter",
-                    "description": {"en": "Sea Ice concentration (ice=1;no ice=0)"},
-                    "unit": {
-                        "label": {"en": "Ratio"},
-                        "symbol": {
-                            "value": "1",
-                            "type": "http://www.opengis.net/def/uom/UCUM/",
-                        },
-                    },
-                    "observedProperty": {
-                        "id": "http://vocab.nerc.ac.uk/standard_name/sea_ice_area_fraction/",
-                        "label": {"en": "Sea Ice Concentration"},
-                    },
-                }
-            },
-            "ranges": {
-                "ICEC": {
-                    "type": "NdArray",
-                    "dataType": "float",
-                    "axisNames": ["t", "z", "y", "x"],
-                    "shape": [1, 1, 2, 3],
-                    "values": [0.5, 0.6, 0.4, 0.6, 0.2, None],
-                }
-            },
+        query_args = [crs, format_, select_properties, datetime_, location_id]
+        if format_ == "geojson" or format_ == "json" or not any(query_args):
+            return LocationHelper.to_geojson(response)
+        else:
+            return {
+  "type" : "CoverageCollection",
+  "domainType" : "Point",
+  "parameters" : {
+    "POTM": {
+      "type" : "Parameter",
+      "description" : {
+        "en": "The potential temperature, in degrees celsius, of the sea water"
+      },
+      "unit" : {
+        "label": {
+          "en": "Degree Celsius"
+        },
+        "symbol": {
+          "value": "Cel",
+          "type": "http://www.opengis.net/def/uom/UCUM/"
         }
+      },
+      "observedProperty" : {
+        "id" : "http://vocab.nerc.ac.uk/standard_name/sea_water_potential_temperature/",
+        "label" : {
+          "en": "Sea Water Potential Temperature"
+        }
+      }
+    },
+    "QC": {
+      "type" : "Parameter",
+      "observedProperty" : {
+        "id": "http://mmisw.org/ont/argo/qualityFlag",
+        "label" : {
+          "en": "Argo Quality Control Flag"
+        },
+        "categories": [{
+          "id": "http://mmisw.org/ont/argo/qualityFlag/_0",
+          "label": {
+            "en": "No QC was performed"
+          }
+        }, {
+          "id": "http://mmisw.org/ont/argo/qualityFlag/_1",
+          "label": {
+            "en": "Good data"
+          }
+        }, {
+          "id": "http://mmisw.org/ont/argo/qualityFlag/_4",
+          "label": {
+            "en": "Bad data"
+          }
+        }]
+      },
+      "categoryEncoding": {
+        "http://mmisw.org/ont/argo/qualityFlag/_0": 0,
+        "http://mmisw.org/ont/argo/qualityFlag/_1": 1,
+        "http://mmisw.org/ont/argo/qualityFlag/_4": 4
+      }
+    }
+  },
+  "referencing": [{
+    "coordinates": ["x","y"],
+    "system": {
+      "type": "GeographicCRS",
+      "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+    }
+  }, {
+    "coordinates": ["t"],
+    "system": {
+      "type": "TemporalRS",
+      "calendar": "Gregorian"
+    }
+  }],
+  "coverages": [{
+    "type" : "Coverage",
+    "domain" : {
+      "type" : "Domain",
+      "axes": {
+        "x" : { "values": [-5.1] },
+        "y" : { "values": [ -40.2] },
+        "t" : { "values": ["2013-01-01"] }
+      }
+    },
+    "ranges" : {
+      "POTM" : {
+        "type" : "NdArray",
+        "dataType": "float",
+        "values" : [ 23.8 ]
+      },
+      "QC" : {
+        "type" : "NdArray",
+        "dataType": "integer",
+        "values" : [ 1 ]
+      }
+    }
+  }, {
+    "type" : "Coverage",
+    "domain" : {
+      "type" : "Domain",
+      "axes": {
+        "x" : { "values": [-5.1] },
+        "y" : { "values": [ -39.2] },
+        "t" : { "values": ["2013-01-01"] }
+      }
+    },
+    "ranges" : {
+      "POTM" : {
+        "type" : "NdArray",
+        "dataType": "float",
+        "values" : [ 21.8 ]
+      },
+      "QC" : {
+        "type" : "NdArray",
+        "dataType": "integer",
+        "values" : [ 0 ]
+      }
+    }
+  }]
+}
+
 
     def get_fields(self):
         if self._fields:
@@ -263,6 +327,24 @@ class RiseEDRProvider(BaseEDRProvider):
         :returns: A GeoJSON representation of the items.
         """
         # https://github.com/geopython/pygeoapi/issues/1748
+        # define this as an OAF provider as well since pygeoapi has a limitation
+        pass
+
+    @BaseEDRProvider.register()
+    def radius(
+        self,
+        # WKT text string; known as `coords` in the EDR spec
+        wkt: str,
+        within: str,
+        within_units: Literal["miles", "km"],
+        # parameter-name in the EDR spec
+        select_properties: list[str] = [],
+        z: Optional[str] = None,
+        datetime_: Optional[str] = None,
+        format_: Optional[str] = None,
+        crs: Optional[str] = None,
+        **kwargs,
+    ):
         pass
 
     def __repr__(self):

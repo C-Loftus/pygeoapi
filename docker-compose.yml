@@ -10,8 +10,13 @@ services:
       - ./pygeoapi:/pygeoapi/pygeoapi  # Map the pygeoapi directory into /code/pygeoapi in the container
       - ./tests:/pygeoapi/tests         # Map the test directory into /code/test in the container
       - ./.devcontainer:/pygeoapi/.devcontainer
-      - ./pygeoapi-config.yml:/pygeoapi/pygeoapi-config.yml
       - ./notes:/pygeoapi/notes
       - ${PWD}/local.config.yml:/pygeoapi/local.config.yml
+      - ./pygeoapi-config.yml:/pygeoapi/pygeoapi-config.yml
       - ./.vscode:/pygeoapi/.vscode
-      # -  ./:/pygeoapi
+      - ./docker:/pygeoapi/docker
+      - ./docs:/pygeoapi/docs
+      - ./locale:/pygeoapi/locale
+      - ./.venv:/pygeoapi/.venv
+
+      # -  ${PWD}/:/pygeoapi
