@@ -26,7 +26,7 @@
 # =================================================================
 
 import logging
-from typing import ClassVar, Optional
+from typing import ClassVar, Optional, Literal
 import requests
 
 from pygeoapi.provider.base import (
@@ -114,128 +114,13 @@ class RiseEDRProvider(BaseEDRProvider):
         if format_ == "geojson" or format_ == "json" or not any(query_args):
             return LocationHelper.to_geojson(response)
         else:
-            return {
-  "type" : "CoverageCollection",
-  "domainType" : "Point",
-  "parameters" : {
-    "POTM": {
-      "type" : "Parameter",
-      "description" : {
-        "en": "The potential temperature, in degrees celsius, of the sea water"
-      },
-      "unit" : {
-        "label": {
-          "en": "Degree Celsius"
-        },
-        "symbol": {
-          "value": "Cel",
-          "type": "http://www.opengis.net/def/uom/UCUM/"
-        }
-      },
-      "observedProperty" : {
-        "id" : "http://vocab.nerc.ac.uk/standard_name/sea_water_potential_temperature/",
-        "label" : {
-          "en": "Sea Water Potential Temperature"
-        }
-      }
-    },
-    "QC": {
-      "type" : "Parameter",
-      "observedProperty" : {
-        "id": "http://mmisw.org/ont/argo/qualityFlag",
-        "label" : {
-          "en": "Argo Quality Control Flag"
-        },
-        "categories": [{
-          "id": "http://mmisw.org/ont/argo/qualityFlag/_0",
-          "label": {
-            "en": "No QC was performed"
-          }
-        }, {
-          "id": "http://mmisw.org/ont/argo/qualityFlag/_1",
-          "label": {
-            "en": "Good data"
-          }
-        }, {
-          "id": "http://mmisw.org/ont/argo/qualityFlag/_4",
-          "label": {
-            "en": "Bad data"
-          }
-        }]
-      },
-      "categoryEncoding": {
-        "http://mmisw.org/ont/argo/qualityFlag/_0": 0,
-        "http://mmisw.org/ont/argo/qualityFlag/_1": 1,
-        "http://mmisw.org/ont/argo/qualityFlag/_4": 4
-      }
-    }
-  },
-  "referencing": [{
-    "coordinates": ["x","y"],
-    "system": {
-      "type": "GeographicCRS",
-      "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
-    }
-  }, {
-    "coordinates": ["t"],
-    "system": {
-      "type": "TemporalRS",
-      "calendar": "Gregorian"
-    }
-  }],
-  "coverages": [{
-    "type" : "Coverage",
-    "domain" : {
-      "type" : "Domain",
-      "axes": {
-        "x" : { "values": [-5.1] },
-        "y" : { "values": [ -40.2] },
-        "t" : { "values": ["2013-01-01"] }
-      }
-    },
-    "ranges" : {
-      "POTM" : {
-        "type" : "NdArray",
-        "dataType": "float",
-        "values" : [ 23.8 ]
-      },
-      "QC" : {
-        "type" : "NdArray",
-        "dataType": "integer",
-        "values" : [ 1 ]
-      }
-    }
-  }, {
-    "type" : "Coverage",
-    "domain" : {
-      "type" : "Domain",
-      "axes": {
-        "x" : { "values": [-5.1] },
-        "y" : { "values": [ -39.2] },
-        "t" : { "values": ["2013-01-01"] }
-      }
-    },
-    "ranges" : {
-      "POTM" : {
-        "type" : "NdArray",
-        "dataType": "float",
-        "values" : [ 21.8 ]
-      },
-      "QC" : {
-        "type" : "NdArray",
-        "dataType": "integer",
-        "values" : [ 0 ]
-      }
-    }
-  }]
-}
-
+            return LocationHelper.to_covjson(response)
 
     def get_fields(self):
         if self._fields:
             return self._fields
 
-        self._fields = RISECache.get_fields()
+        self._fields = RISECache.get_parameters()
 
         return self._fields
 

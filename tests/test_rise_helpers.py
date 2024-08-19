@@ -391,3 +391,17 @@ def test_expand_with_results():
     assert "/rise/api/catalog-item/142" in ids
     assert "/rise/api/catalog-item/144" in ids
     assert "/rise/api/catalog-item/11279" in ids
+
+
+def test_fields_to_covjson():
+    field_ids = RISECache.get_parameters().keys()
+    length = len(field_ids)
+    assert length == len(set(field_ids))
+
+    assert requests.get(
+        "https://data.usbr.gov/rise/api/parameter/4225",
+        headers={"accept": "application/vnd.api+json"},
+    ).ok
+
+    res = LocationHelper._fields_to_covjson(only_include_ids=["4223"])
+    x = 5

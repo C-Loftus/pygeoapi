@@ -24,6 +24,8 @@ from pygeoapi.provider.rise_api_types import (
     CoverageCollection,
     CoverageRange,
     JsonPayload,
+    LocationData,
+    LocationDataAttributes,
     LocationResponse,
     Parameter,
     Url,
@@ -132,7 +134,7 @@ async def fetch_url(url: str) -> dict:
             try:
                 return await response.json()
             except Exception as e:
-                LOGGER.error(f"{e}: Text: {response.text}, URL: {url}")
+                LOGGER.error(f"{e}: Text: {await response.text()}, URL: {url}")
                 raise e
 
 
@@ -177,10 +179,7 @@ class RISECache(CacheInterface):
                 return res
 
     @staticmethod
-    def get_fields() -> dict[str, dict]:
-        if RISECache.contains("allFields"):
-            return RISECache.get("allFields")
-
+    def get_parameters() -> dict[str, dict]:
         fields = {}
 
         pages = RISECache.get_or_fetch_all_pages(
@@ -206,8 +205,6 @@ class RISECache(CacheInterface):
                 "title": param["parameterName"],
                 "x-ogc-unit": param["parameterUnit"],
             }
-
-        RISECache.set("allFields", fields)
 
         return fields
 
@@ -612,16 +609,22 @@ class LocationHelper:
 
         new = deepcopy(response)
 
+        # Make a dictionary from an existing response, no fetch needed
         locationToCatalogItemUrls: dict[str, list[str]] = (
             LocationHelper.get_catalogItemURLs(new)
         )
         catalogItemUrls = flatten_values(locationToCatalogItemUrls)
+        #
         catalogItemUrlToResponse = asyncio.run(
-            RISECache.get_or_fetch_group(catalogItemUrls, force_fetch=True)
+            RISECache.get_or_fetch_group(catalogItemUrls)
         )
 
         if add_results:
             resultUrls = [getResultUrlFromCatalogUrl(url) for url in catalogItemUrls]
+            assert len(resultUrls) == len(set(resultUrls)), LOGGER.error(
+                "Duplicate result urls when adding results to the catalog items"
+            )
+            LOGGER.error(f"Fetching {resultUrls}; {len(resultUrls)} in total")
             results = asyncio.run(RISECache.get_or_fetch_group(resultUrls))
 
         for i, location in enumerate(new["data"]):
@@ -645,7 +648,7 @@ class LocationHelper:
                     base_catalog_item_j = new["data"][i]["relationships"][
                         "catalogItems"
                     ]["data"][j]
-                    results_for_catalog_item_j = results[
+                    results_for_catalog_item_j = results[  # type: ignore Can't be unbound
                         getResultUrlFromCatalogUrl(url)
                     ]["data"]
                     base_catalog_item_j["results"] = results_for_catalog_item_j
@@ -653,29 +656,39 @@ class LocationHelper:
         return new
 
     @staticmethod
-    def _fields_to_covjson() -> dict:
+    def _fields_to_covjson(only_include_ids: Optional[list[str]] = None) -> dict:
         paramIdsToMetadata: dict[str, Parameter] = {}
 
-        fieldsToGeoJsonOutput = RISECache.get_fields()
+        fieldsToGeoJsonOutput = RISECache.get_parameters()
         for f in fieldsToGeoJsonOutput:
+            if only_include_ids and f not in only_include_ids:
+                continue
+
             associatedData = fieldsToGeoJsonOutput[f]
 
             _param: Parameter = {
                 "type": "Parameter",
-                "description": associatedData["title"],
+                "description": {"en": associatedData["title"]},
                 "unit": {"symbol": associatedData["x-ogc-unit"]},
-                "observedProperty": {"id": "DUMMY_PLACEHOLDER"},
+                "observedProperty": {
+                    "id": "DUMMY_PLACEHOLDER",
+                    "label": {"en": "DUMMY PLACEHOLDER LABEL"},
+                },
             }
-            paramIdsToMetadata[associatedData["_id"]] = _param
+            # TODO check default if _id isn't present
+            paramIdsToMetadata[f] = _param
 
         return paramIdsToMetadata
 
     @staticmethod
     def to_covjson(location_response: LocationResponse) -> CoverageCollection:
         # Fill in the catalog items so we can more easily join across them
-        expanded_response = LocationHelper.fill_catalogItems(location_response, add_results=True)
+        expanded_response = LocationHelper.fill_catalogItems(
+            location_response, add_results=True
+        )
 
         allCoverages: list[Coverage] = []
+        relevant_fields: list[str] = []
 
         for location_feature in expanded_response["data"]:
             paramToCoverage: dict[str, CoverageRange] = {}
@@ -683,49 +696,86 @@ class LocationHelper:
             for param in location_feature["relationships"]["catalogItems"]["data"]:
                 assert param is not None
 
-                id: str = param["attributes"]["_id"]  # type: ignore ; seems to be an error with pylance type narrowing
+                id = str(param["attributes"]["parameterId"])
 
-                results = [result for result in param["attributes"]["results"]]
+                relevant_fields.append(id)
 
-                results = [result['result'] for result in param["results"]]
-                
+                results = [
+                    result["attributes"]["result"] for result in param["results"]
+                ]
+
                 paramToCoverage[id] = {
                     "axisNames": ["t"],
                     "dataType": "float",
                     "shape": [len(results)],
-                    "values": [1.0],
+                    "values": results,
                     "type": "NdArray",
                 }
 
-            coverage_item: Coverage = {
-                "type": "Coverage",
-                "domain": {
-                    "type": "Domain",
-                    "axes": {
-                        "composite": {
-                            "dataType": location_feature["attributes"][
-                                "locationCoordinates"
-                            ]["type"],
-                            "coordinates": ["x", "y"],
-                            "values": [
-                                [
-                                    location_feature["attributes"][
-                                        "locationCoordinates"
-                                    ]["coordinates"]
-                                ]
-                            ],
+            # if it is a point we can't have a polygonseries
+            isPoint = (
+                location_feature["attributes"]["locationCoordinates"]["type"] == "Point"
+            )
+
+            if isPoint:
+                z = location_feature["attributes"]["elevation"]
+                x = location_feature["attributes"]["locationCoordinates"][
+                    "coordinates"
+                ][0]
+                y = location_feature["attributes"]["locationCoordinates"][
+                    "coordinates"
+                ][1]
+
+                coverage_item: Coverage = {
+                    "type": "Coverage",
+                    "domainType": "VerticalProfile",
+                    "domain": {
+                        "type": "Domain",
+                        "axes": {
+                            "x": {"values": [x]},
+                            "y": {"values": [y]},
+                            "z": {"values": [z]},
+                            "t": {"values": ["2013-01-13T11:12:20Z"]},
                         },
-                        "t": {"values": []},
                     },
-                },
-                "ranges": paramToCoverage,
-            }
+                    "ranges": paramToCoverage,
+                }
+
+            else:
+                coverage_item: Coverage = {
+                    "type": "Coverage",
+                    "domainType": "PolygonSeries",
+                    "domain": {
+                        "type": "Domain",
+                        "axes": {
+                            "composite": {
+                                "dataType": location_feature["attributes"][
+                                    "locationCoordinates"
+                                ]["type"],
+                                "coordinates": ["x", "y"],
+                                "values": [
+                                    [
+                                        location_feature["attributes"][
+                                            "locationCoordinates"
+                                        ]["coordinates"]
+                                    ]
+                                ],
+                            },
+                            "t": {"values": list(range(25))},
+                        },
+                    },
+                    "ranges": paramToCoverage,
+                }
 
             allCoverages.append(coverage_item)
 
+        filterd_params = LocationHelper._fields_to_covjson(
+            only_include_ids=relevant_fields
+        )
+
         templated_response: CoverageCollection = {
             "type": "CoverageCollection",
-            "parameters": LocationHelper._fields_to_covjson(),
+            "parameters": filterd_params,
             "referencing": [
                 {
                     "coordinates": ["x", "y"],
@@ -754,7 +804,6 @@ class LocationHelper:
                     "system": {"type": "TemporalRS", "calendar": "Gregorian"},
                 },
             ],
-            "domainType": "PolygonSeries",
             "coverages": allCoverages,
         }
 

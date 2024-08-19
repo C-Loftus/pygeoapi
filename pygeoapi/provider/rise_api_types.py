@@ -103,7 +103,7 @@ class ZType(Enum):
 
 class Parameter(TypedDict):
     type: str
-    description: dict
+    description: dict[str, dict]
     unit: dict
     observedProperty: dict
 
@@ -120,13 +120,13 @@ class Coverage(TypedDict):
     type: Literal["Coverage"]
     domain: dict
     ranges: dict[str, CoverageRange]
+    domainType: Literal["PolygonSeries", "VerticalProfile"]
 
 
 class CoverageCollection(TypedDict):
     type: str
     parameters: dict[str, Parameter]
     referencing: list
-    domainType: str
     coverages: list[Coverage]
 
 

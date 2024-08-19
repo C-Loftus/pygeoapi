@@ -111,4 +111,4 @@ class RiseProvider(BaseProvider):
         return p.locations(location_id=identifier)
 
     def get_fields(self, **kwargs):
-        return RISECache.get_fields()
+        return RISECache.get_parameters()
