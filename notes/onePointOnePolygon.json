@@ -236,7 +236,7 @@
                     "type": "NdArray",
                     "dataType": "float",
                     "axisNames": [
-                        "t"
+                        "z"
                     ],
                     "shape": [
                         3

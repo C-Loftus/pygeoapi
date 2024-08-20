@@ -24,8 +24,6 @@ from pygeoapi.provider.rise_api_types import (
     CoverageCollection,
     CoverageRange,
     JsonPayload,
-    LocationData,
-    LocationDataAttributes,
     LocationResponse,
     Parameter,
     Url,
@@ -203,6 +201,7 @@ class RISECache(CacheInterface):
             fields[str(param["_id"])] = {
                 "type": param["parameterUnit"],
                 "title": param["parameterName"],
+                "description": param["parameterDescription"],
                 "x-ogc-unit": param["parameterUnit"],
             }
 
@@ -525,7 +524,7 @@ class LocationHelper:
                             if elevation not in x:
                                 indices_to_pop.add(i)
                         case _:
-                            assert_never(parsed_z)
+                            assert_never(parsed_z)  # type: ignore
 
             if geometry:
                 result_geo = shapely.geometry.shape(
@@ -549,6 +548,15 @@ class LocationHelper:
         if not inplace:
             location_response = deepcopy(location_response)
         location_response["data"] = location_response["data"][:limit]
+        return location_response
+
+    @staticmethod
+    def remove_before_offset(
+        location_response: LocationResponse, offset: int, inplace: bool = False
+    ):
+        if not inplace:
+            location_response = deepcopy(location_response)
+        location_response["data"] = location_response["data"][offset:]
         return location_response
 
     @staticmethod
@@ -648,10 +656,14 @@ class LocationHelper:
                     base_catalog_item_j = new["data"][i]["relationships"][
                         "catalogItems"
                     ]["data"][j]
-                    results_for_catalog_item_j = results[  # type: ignore Can't be unbound
-                        getResultUrlFromCatalogUrl(url)
-                    ]["data"]
-                    base_catalog_item_j["results"] = results_for_catalog_item_j
+                    associated_res_url = getResultUrlFromCatalogUrl(url)
+                    if not associated_res_url:
+                        results_for_catalog_item_j = None
+                    else:
+                        results_for_catalog_item_j = results[associated_res_url].get(
+                            "data", None
+                        )
+                        base_catalog_item_j["results"] = results_for_catalog_item_j
 
         return new
 
@@ -668,11 +680,11 @@ class LocationHelper:
 
             _param: Parameter = {
                 "type": "Parameter",
-                "description": {"en": associatedData["title"]},
+                "description": {"en": associatedData["description"]},
                 "unit": {"symbol": associatedData["x-ogc-unit"]},
                 "observedProperty": {
-                    "id": "DUMMY_PLACEHOLDER",
-                    "label": {"en": "DUMMY PLACEHOLDER LABEL"},
+                    "id": f,
+                    "label": {"en": associatedData["title"]},
                 },
             }
             # TODO check default if _id isn't present
@@ -693,6 +705,9 @@ class LocationHelper:
         for location_feature in expanded_response["data"]:
             paramToCoverage: dict[str, CoverageRange] = {}
 
+            # We need to have a separate param and location combination for
+            # each combination of the two since we cannot combine axes
+            # if the axes are different between parameters
             for param in location_feature["relationships"]["catalogItems"]["data"]:
                 assert param is not None
 
@@ -700,9 +715,21 @@ class LocationHelper:
 
                 relevant_fields.append(id)
 
-                results = [
-                    result["attributes"]["result"] for result in param["results"]
-                ]
+                # Check if the parameter has results
+                if (
+                    param["results"] is not None
+                    and len(param["results"]) > 0
+                    and param["results"][0]["attributes"] is not None
+                ):
+                    results: list[float] = [
+                        result["attributes"]["result"] for result in param["results"]
+                    ]
+                    times: list[str] = [
+                        result["attributes"]["dateTime"] for result in param["results"]
+                    ]
+
+                else:
+                    results, times = [], []
 
                 paramToCoverage[id] = {
                     "axisNames": ["t"],
@@ -712,62 +739,62 @@ class LocationHelper:
                     "type": "NdArray",
                 }
 
-            # if it is a point we can't have a polygonseries
-            isPoint = (
-                location_feature["attributes"]["locationCoordinates"]["type"] == "Point"
-            )
+                # if it is a point we can't have a polygonseries
+                isPoint = (
+                    location_feature["attributes"]["locationCoordinates"]["type"]
+                    == "Point"
+                )
 
-            if isPoint:
-                z = location_feature["attributes"]["elevation"]
-                x = location_feature["attributes"]["locationCoordinates"][
-                    "coordinates"
-                ][0]
-                y = location_feature["attributes"]["locationCoordinates"][
-                    "coordinates"
-                ][1]
+                if isPoint:
+                    # z = location_feature["attributes"]["elevation"]
+                    x = location_feature["attributes"]["locationCoordinates"][
+                        "coordinates"
+                    ][0]
+                    y = location_feature["attributes"]["locationCoordinates"][
+                        "coordinates"
+                    ][1]
 
-                coverage_item: Coverage = {
-                    "type": "Coverage",
-                    "domainType": "VerticalProfile",
-                    "domain": {
-                        "type": "Domain",
-                        "axes": {
-                            "x": {"values": [x]},
-                            "y": {"values": [y]},
-                            "z": {"values": [z]},
-                            "t": {"values": ["2013-01-13T11:12:20Z"]},
-                        },
-                    },
-                    "ranges": paramToCoverage,
-                }
-
-            else:
-                coverage_item: Coverage = {
-                    "type": "Coverage",
-                    "domainType": "PolygonSeries",
-                    "domain": {
-                        "type": "Domain",
-                        "axes": {
-                            "composite": {
-                                "dataType": location_feature["attributes"][
-                                    "locationCoordinates"
-                                ]["type"],
-                                "coordinates": ["x", "y"],
-                                "values": [
-                                    [
-                                        location_feature["attributes"][
-                                            "locationCoordinates"
-                                        ]["coordinates"]
-                                    ]
-                                ],
+                    coverage_item: Coverage = {
+                        "type": "Coverage",
+                        "domainType": "PointSeries",
+                        "domain": {
+                            "type": "Domain",
+                            "axes": {
+                                "x": {"values": [x]},
+                                "y": {"values": [y]},
+                                "t": {"values": times},
                             },
-                            "t": {"values": list(range(25))},
                         },
-                    },
-                    "ranges": paramToCoverage,
-                }
+                        "ranges": paramToCoverage,
+                    }
 
-            allCoverages.append(coverage_item)
+                else:
+                    coverage_item: Coverage = {
+                        "type": "Coverage",
+                        "domainType": "PolygonSeries",
+                        "domain": {
+                            "type": "Domain",
+                            "axes": {
+                                "composite": {
+                                    "dataType": location_feature["attributes"][
+                                        "locationCoordinates"
+                                    ]["type"],
+                                    "coordinates": ["x", "y"],
+                                    "values": [
+                                        [
+                                            location_feature["attributes"][
+                                                "locationCoordinates"
+                                            ]["coordinates"]
+                                        ]
+                                    ],
+                                },
+                                "t": {"values": times},
+                            },
+                        },
+                        "ranges": paramToCoverage,
+                    }
+
+                allCoverages.append(coverage_item)
 
         filterd_params = LocationHelper._fields_to_covjson(
             only_include_ids=relevant_fields

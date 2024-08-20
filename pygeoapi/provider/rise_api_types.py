@@ -120,7 +120,7 @@ class Coverage(TypedDict):
     type: Literal["Coverage"]
     domain: dict
     ranges: dict[str, CoverageRange]
-    domainType: Literal["PolygonSeries", "VerticalProfile"]
+    domainType: Literal["PolygonSeries", "PointSeries"]
 
 
 class CoverageCollection(TypedDict):

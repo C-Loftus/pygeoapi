@@ -110,7 +110,8 @@ class RiseEDRProvider(BaseEDRProvider):
         if select_properties:
             response = LocationHelper.filter_by_properties(response, select_properties)
 
-        query_args = [crs, format_, select_properties, datetime_, location_id]
+        query_args = [crs, select_properties, datetime_, location_id]
+
         if format_ == "geojson" or format_ == "json" or not any(query_args):
             return LocationHelper.to_geojson(response)
         else:

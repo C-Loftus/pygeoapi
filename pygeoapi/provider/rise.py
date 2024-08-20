@@ -55,7 +55,7 @@ class RiseProvider(BaseProvider):
         Initialize object
         :param provider_def: provider definition
         """
-        
+
         super().__init__(provider_def)
 
     def items(
@@ -64,8 +64,10 @@ class RiseProvider(BaseProvider):
         datetime_: Optional[str] = None,
         limit: Optional[int] = None,
         itemId: Optional[str] = None,
+        offset: Optional[int] = 0,
         **kwargs,
     ):
+        LOGGER.error(kwargs)
         if itemId:
             # Instead of merging all location pages, just
             # fetch the location associated with the ID
@@ -80,7 +82,9 @@ class RiseProvider(BaseProvider):
             else:
                 response: LocationResponse = single_endpoint_response.json()
         else:
-            all_location_responses = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
+            all_location_responses = RISECache.get_or_fetch_all_pages(
+                RiseEDRProvider.LOCATION_API
+            )
             merged_response = merge_pages(all_location_responses)
             response: LocationResponse = get_only_key(merged_response)
             if response is None:
@@ -88,6 +92,9 @@ class RiseProvider(BaseProvider):
 
         if datetime_:
             response = LocationHelper.filter_by_date(response, datetime_)
+
+        if offset:
+            response = LocationHelper.remove_before_offset(response, offset)
 
         if limit:
             response = LocationHelper.filter_by_limit(response, limit)
