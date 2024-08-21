@@ -112,7 +112,7 @@ class RiseEDRProvider(BaseEDRProvider):
 
         query_args = [crs, select_properties, datetime_, location_id]
 
-        if format_ == "geojson" or format_ == "json" or not any(query_args):
+        if not any(query_args):
             return LocationHelper.to_geojson(response)
         else:
             return LocationHelper.to_covjson(response)
@@ -158,9 +158,9 @@ class RiseEDRProvider(BaseEDRProvider):
 
         response = LocationHelper.filter_by_bbox(response, bbox, z)
 
-        match format_:
-            case "json" | "GeoJSON" | _:
-                return LocationHelper.to_geojson(response)
+        # match format_:
+        #     case "json" | "GeoJSON" | _:
+        return LocationHelper.to_geojson(response)
 
     @BaseEDRProvider.register()
     def area(
@@ -198,11 +198,11 @@ class RiseEDRProvider(BaseEDRProvider):
 
         response = LocationHelper.filter_by_wkt(response, wkt, z)
 
-        match format_:
-            case "json" | "GeoJSON" | "" | None:
-                return LocationHelper.to_geojson(response)
-            case "covjson":
-                return LocationHelper.to_covjson(response)
+        # match format_:
+        #     case "json" | "GeoJSON" | "" | None:
+        return LocationHelper.to_geojson(response)
+        # case "covjson":
+        #     return LocationHelper.to_covjson(response)
 
     @BaseEDRProvider.register()
     def items(self, **kwargs):
@@ -214,23 +214,6 @@ class RiseEDRProvider(BaseEDRProvider):
         """
         # https://github.com/geopython/pygeoapi/issues/1748
         # define this as an OAF provider as well since pygeoapi has a limitation
-        pass
-
-    @BaseEDRProvider.register()
-    def radius(
-        self,
-        # WKT text string; known as `coords` in the EDR spec
-        wkt: str,
-        within: str,
-        within_units: Literal["miles", "km"],
-        # parameter-name in the EDR spec
-        select_properties: list[str] = [],
-        z: Optional[str] = None,
-        datetime_: Optional[str] = None,
-        format_: Optional[str] = None,
-        crs: Optional[str] = None,
-        **kwargs,
-    ):
         pass
 
     def __repr__(self):

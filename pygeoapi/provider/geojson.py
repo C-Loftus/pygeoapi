@@ -131,7 +131,7 @@ class GeoJSONProvider(BaseProvider):
                 i['properties'] = {k: v for k, v in i['properties'].items()
                                    if k in set(self.properties) | set(select_properties)}  # noqa
         return data
-
+    
     @crs_transform
     def query(self, offset=0, limit=10, resulttype='results',
               bbox=[], datetime_=None, properties=[], sortby=[],

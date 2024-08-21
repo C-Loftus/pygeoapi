@@ -29,6 +29,7 @@
 #
 # =================================================================
 
+import json
 import logging
 from typing import Optional
 
@@ -60,14 +61,13 @@ class RiseProvider(BaseProvider):
 
     def items(
         self,
-        bbox: list,
+        bbox: list = [],
         datetime_: Optional[str] = None,
         limit: Optional[int] = None,
         itemId: Optional[str] = None,
         offset: Optional[int] = 0,
         **kwargs,
     ):
-        LOGGER.error(kwargs)
         if itemId:
             # Instead of merging all location pages, just
             # fetch the location associated with the ID
@@ -81,6 +81,7 @@ class RiseProvider(BaseProvider):
                 raise ProviderQueryError(single_endpoint_response.text)
             else:
                 response: LocationResponse = single_endpoint_response.json()
+
         else:
             all_location_responses = RISECache.get_or_fetch_all_pages(
                 RiseEDRProvider.LOCATION_API
@@ -99,9 +100,13 @@ class RiseProvider(BaseProvider):
         if limit:
             response = LocationHelper.filter_by_limit(response, limit)
 
-        response = LocationHelper.filter_by_bbox(response, bbox)
+        # Even though bbox is required, it can be an empty list. If it is empty just skip filtering
+        if bbox:
+            response = LocationHelper.filter_by_bbox(response, bbox)
 
-        return LocationHelper.to_geojson(response)
+        geojson = LocationHelper.to_geojson(response, single_feature=itemId is not None)
+
+        return geojson
 
     def query(self, **kwargs):
         return self.items(**kwargs)
@@ -114,8 +119,7 @@ class RiseProvider(BaseProvider):
 
         :returns: dict of single GeoJSON feature
         """
-        p = RiseEDRProvider(None)
-        return p.locations(location_id=identifier)
+        return self.items(itemId=identifier, bbox=[], **kwargs)
 
     def get_fields(self, **kwargs):
         return RISECache.get_parameters()

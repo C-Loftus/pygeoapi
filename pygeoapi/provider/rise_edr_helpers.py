@@ -575,7 +575,7 @@ class LocationHelper:
         return location_response
 
     @staticmethod
-    def to_geojson(location_response: LocationResponse) -> dict:
+    def to_geojson(location_response: LocationResponse, single_feature: bool = False) -> dict:
         features = []
 
         for location_feature in location_response["data"]:
@@ -597,6 +597,8 @@ class LocationHelper:
                 "geometry": location_feature["attributes"]["locationCoordinates"],
             }
             features.append(feature_as_geojson)
+        if single_feature:
+            return features[0]
 
         return {"type": "FeatureCollection", "features": features}
 
@@ -730,6 +732,10 @@ class LocationHelper:
 
                 else:
                     results, times = [], []
+                    # Since coveragejson does not allow a parameter without results,
+                    # we can skip adding the parameter/location combination all together
+                    # Figure out what we want to do for these params that are associated but have no data
+                    continue
 
                 paramToCoverage[id] = {
                     "axisNames": ["t"],
@@ -781,11 +787,9 @@ class LocationHelper:
                                     ]["type"],
                                     "coordinates": ["x", "y"],
                                     "values": [
-                                        [
                                             location_feature["attributes"][
                                                 "locationCoordinates"
                                             ]["coordinates"]
-                                        ]
                                     ],
                                 },
                                 "t": {"values": times},

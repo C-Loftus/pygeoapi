@@ -340,6 +340,15 @@ def test_fill_catalogItems():
 #                 break
 
 
+def test_cache_clears():
+    RISECache.set("https://data.usbr.gov/rise/api/catalog-item/128562", "test")
+    assert RISECache.get("https://data.usbr.gov/rise/api/catalog-item/128562") == "test"
+
+    RISECache.clear("https://data.usbr.gov/rise/api/catalog-item/128562")
+    with pytest.raises(KeyError):
+        RISECache.get("https://data.usbr.gov/rise/api/catalog-item/128562")
+
+
 def test_cache():
     url = "https://data.usbr.gov/rise/api/catalog-item/128562"
 
@@ -358,8 +367,8 @@ def test_cache():
     assert disk_res
     disk_time = time.time() - start
 
-    assert disk_time < network_time
     assert remote_res == disk_res
+    assert disk_time < network_time
 
 
 def test_make_result():
