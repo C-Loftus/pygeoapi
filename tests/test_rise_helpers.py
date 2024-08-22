@@ -4,9 +4,7 @@ import pytest
 import shapely.wkt
 
 from pygeoapi.provider.base import ProviderQueryError
-from pygeoapi.provider.rise_api_types import LocationResponse
 from pygeoapi.provider.rise_edr_helpers import (
-    CatalogItem,
     CacheInterface,
     LocationHelper,
     fetch_url_group,
@@ -313,31 +311,6 @@ def test_fill_catalogItems():
             expanded["data"][0]["relationships"]["catalogItems"]["data"][1]["id"]
             == "/rise/api/catalog-item/128633"
         )
-
-
-# def test_get_results():
-#     with open("tests/data/rise/location.json") as f:
-#         data: LocationResponse = json.load(f)
-
-#         # "locationName": "Turquoise Lake and Sugar Loaf Dam",
-#         one_location = LocationHelper.filter_by_id(data, identifier="498")
-
-#         catItems = LocationHelper.get_catalogItemURLs(one_location)
-
-#         for location in catItems:
-#             for item in catItems[location]:
-#                 # we have the entire api url but we only want the id so
-#                 # we can pass the id to the result endpoint
-#                 raw_item = item.removeprefix(
-#                     "https://data.usbr.gov/rise/api/catalog-item/"
-#                 )
-
-#                 res = CatalogItem.get_results(raw_item)
-#                 assert res is not None
-#                 assert res[0]["attributes"]["result"] == 34681  # type: ignore
-
-#                 # only test the first one for the sake of brevity
-#                 break
 
 
 def test_cache_clears():

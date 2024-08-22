@@ -26,7 +26,7 @@
 # =================================================================
 
 import logging
-from typing import ClassVar, Optional, Literal
+from typing import ClassVar, Optional
 import requests
 
 from pygeoapi.provider.base import (
@@ -34,6 +34,7 @@ from pygeoapi.provider.base import (
     ProviderQueryError,
 )
 from pygeoapi.provider.base_edr import BaseEDRProvider
+from pygeoapi.provider.rise_api_types import CoverageCollection
 from pygeoapi.provider.rise_edr_helpers import (
     RISECache,
     get_only_key,

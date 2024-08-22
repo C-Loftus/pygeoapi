@@ -597,8 +597,8 @@ class LocationHelper:
                 "geometry": location_feature["attributes"]["locationCoordinates"],
             }
             features.append(feature_as_geojson)
-        if single_feature:
-            return features[0]
+            if single_feature:
+                return feature_as_geojson
 
         return {"type": "FeatureCollection", "features": features}
 

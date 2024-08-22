@@ -46,12 +46,20 @@ def config():
 def test_location_locationId(config):
     p = RiseEDRProvider(config)
     out = p.locations(location_id=1)
-    assert len(out["coverages"]) == 1
-    out = p.locations(location_id=1)
-    assert len(out["coverages"]) == 1
+    # Returns 3 since we have 3 parameters in the location
+    assert len(out["coverages"]) == 3
     # invalid location should return nothing
     out = p.locations(location_id=1111111111111111)
     assert len(out["coverages"]) == 0
+
+def test_location_datetime(config):
+    p = RiseEDRProvider(config)
+    out = p.locations(datetime_="2024-03-29T15:49:57+00:00")
+    for i in out["features"]:
+        if i["id"] == 6902:
+            break
+    else:
+        assert False
 
 
 def test_get_fields(config):
@@ -82,8 +90,8 @@ def test_location_select_properties(config):
 def test_location_datetime(config):
     p = RiseEDRProvider(config)
     out = p.locations(datetime_="2024-03-29T15:49:57+00:00")
-    for i in out["features"]:
-        if i["id"] == 6902:
+    for i in out["coverages"]:
+        if i["type"] == 6902:
             break
     else:
         assert False
@@ -109,6 +117,7 @@ def test_item():
 
 def test_cube():
     pass
+
 
 def test_polygon_output():
     # polygons 3526
