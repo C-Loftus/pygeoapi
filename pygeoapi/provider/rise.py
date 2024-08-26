@@ -10,8 +10,9 @@ from pygeoapi.provider.rise_edr_helpers import (
     LocationHelper,
     RISECache,
     get_only_key,
-    merge_pages,
 )
+from pygeoapi.provider.rise_edr_share import merge_pages
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ class RiseProvider(BaseProvider):
         Initialize object
         :param provider_def: provider definition
         """
+
+        self.cache = RISECache(provider_def.get("implementation", "shelve"))
 
         super().__init__(provider_def)
 
@@ -51,7 +54,7 @@ class RiseProvider(BaseProvider):
                 response: LocationResponse = single_endpoint_response.json()
 
         else:
-            all_location_responses = RISECache.get_or_fetch_all_pages(
+            all_location_responses = self.cache.get_or_fetch_all_pages(
                 RiseEDRProvider.LOCATION_API
             )
             merged_response = merge_pages(all_location_responses)
@@ -90,4 +93,4 @@ class RiseProvider(BaseProvider):
         return self.items(itemId=identifier, bbox=[], **kwargs)
 
     def get_fields(self, **kwargs):
-        return RISECache.get_or_fetch_parameters()
+        return self.cache.get_or_fetch_parameters()

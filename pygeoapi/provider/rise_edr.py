@@ -1,32 +1,5 @@
-# =================================================================
-#
-# Authors: Colton Loftus
-#
-# Permission is hereby granted, free of charge, to any person
-# obtaining a copy of this software and associated documentation
-# files (the "Software"), to deal in the Software without
-# restriction, including without limitation the rights to use,
-# copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following
-# conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-# OTHER DEALINGS IN THE SOFTWARE.
-#
-# =================================================================
-
 import logging
-from typing import ClassVar, Optional
+from typing import Any, ClassVar, Optional
 import requests
 
 from pygeoapi.provider.base import (
@@ -34,13 +7,12 @@ from pygeoapi.provider.base import (
     ProviderQueryError,
 )
 from pygeoapi.provider.base_edr import BaseEDRProvider
-from pygeoapi.provider.rise_api_types import CoverageCollection
 from pygeoapi.provider.rise_edr_helpers import (
     RISECache,
     get_only_key,
-    merge_pages,
     LocationHelper,
 )
+from pygeoapi.provider.rise_edr_share import merge_pages
 
 
 LOGGER = logging.getLogger(__name__)
@@ -51,8 +23,9 @@ class RiseEDRProvider(BaseEDRProvider):
 
     LOCATION_API: ClassVar[str] = "https://data.usbr.gov/rise/api/location"
     BASE_API: ClassVar[str] = "https://data.usbr.gov"
+    cache: RISECache
 
-    def __init__(self, provider_def):
+    def __init__(self, provider_def: dict[str, Any]):
         """
         Initialize object
 
@@ -60,6 +33,8 @@ class RiseEDRProvider(BaseEDRProvider):
 
         :returns: pygeoapi.provider.base_edr.RiseEDRProvider
         """
+        self.cache = RISECache(provider_def.get("implementation", "shelve"))
+
         provider_def = {
             "name": "Rise EDR",
             "type": "feature",
@@ -83,6 +58,7 @@ class RiseEDRProvider(BaseEDRProvider):
         """
         Extract data from location
         """
+
         if location_id:
             # Instead of merging all location pages, just
             # fetch the location associated with the ID
@@ -98,7 +74,7 @@ class RiseEDRProvider(BaseEDRProvider):
                 response = response.json()
 
         else:
-            response = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
+            response = self.cache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
             response = merge_pages(response)
             response = get_only_key(response)
             if response is None:
@@ -109,7 +85,9 @@ class RiseEDRProvider(BaseEDRProvider):
 
         # location 1 has parameter 1721
         if select_properties:
-            response = LocationHelper.filter_by_properties(response, select_properties)
+            response = LocationHelper.filter_by_properties(
+                response, select_properties, self.cache
+            )
 
         query_args = [crs, select_properties, datetime_, location_id]
 
@@ -118,13 +96,13 @@ class RiseEDRProvider(BaseEDRProvider):
                 response, single_feature=True if location_id else False
             )
         else:
-            return LocationHelper.to_covjson(response)
+            return LocationHelper.to_covjson(response, self.cache)
 
     def get_fields(self):
         if self._fields:
             return self._fields
 
-        self._fields = RISECache.get_or_fetch_parameters()
+        self._fields = self.cache.get_or_fetch_parameters()
 
         return self._fields
 
@@ -147,14 +125,16 @@ class RiseEDRProvider(BaseEDRProvider):
         :param format_: data format of output
 
         """
-        response = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
+        response = self.cache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
         response = merge_pages(response)
         response = get_only_key(response)
         if response is None:
             raise ProviderNoDataError
 
         if select_properties:
-            response = LocationHelper.filter_by_properties(response, select_properties)
+            response = LocationHelper.filter_by_properties(
+                response, select_properties, self.cache
+            )
 
         if datetime_:
             response = LocationHelper.filter_by_date(response, datetime_)
@@ -187,14 +167,16 @@ class RiseEDRProvider(BaseEDRProvider):
         :returns: A CovJSON CoverageCollection.
         """
 
-        response = RISECache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
+        response = self.cache.get_or_fetch_all_pages(RiseEDRProvider.LOCATION_API)
         response = merge_pages(response)
         response = get_only_key(response)
         if response is None:
             raise ProviderNoDataError
 
         if select_properties:
-            response = LocationHelper.filter_by_properties(response, select_properties)
+            response = LocationHelper.filter_by_properties(
+                response, select_properties, self.cache
+            )
 
         if datetime_:
             response = LocationHelper.filter_by_date(response, datetime_)

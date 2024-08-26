@@ -2,7 +2,6 @@ import requests
 import pytest
 
 from pygeoapi.provider.rise import RiseProvider
-from pygeoapi.provider.rise_api_types import CoverageCollection
 from pygeoapi.provider.rise_edr import RiseEDRProvider
 
 
@@ -47,13 +46,13 @@ def test_location_select_properties(config):
     p = RiseEDRProvider(config)
 
     out = p.locations(select_properties="DUMMY-PARAM", format_="geojson")
-    assert len(out["features"]) == 0
+    assert len(out["features"]) == 0  # type: ignore ; issues with pyright union types
 
     out = p.locations(select_properties="18", format_="geojson")
-    assert len(out["features"]) > 0
+    assert len(out["features"]) > 0  # type: ignore
 
     out = p.locations(select_properties="2", format_="geojson")
-    for f in out["features"]:
+    for f in out["features"]:  # type: ignore
         if f["id"] == 1:
             break
     else:
@@ -64,14 +63,14 @@ def test_location_select_properties(config):
 def test_location_datetime(config):
     p = RiseEDRProvider(config)
     out = p.locations(datetime_="2024-03-29T15:49:57+00:00", format_="geojson")
-    for i in out["features"]:
+    for i in out["features"]:  # type: ignore
         if i["id"] == 6902:
             break
     else:
         assert False
 
     out = p.locations(datetime="2024-03-29/..", format_="geojson")
-    for i in out["features"]:
+    for i in out["features"]:  # type: ignore
         if i["id"] == 6902:
             break
     else:
@@ -113,3 +112,10 @@ def test_polygon_output():
     out = p.locations(location_id=3526, format_="covjson")
 
     assert out["type"] == "CoverageCollection"
+
+
+@pytest.fixture()
+def redis_config():
+    return {
+        "cache": "redis",
+    }

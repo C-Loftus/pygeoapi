@@ -142,27 +142,14 @@ class CacheInterface(Protocol):
     to be aware of whether or not the url is in the cache
     """
 
-    db: ClassVar[str]
-
     def __init__(self):
         if type(self) is super().__class__:
             raise TypeError(
                 "Cannot instantiate an instance of the cache. You must use static methods on the class itself"
             )
 
-    @staticmethod
-    async def get_or_fetch(url, force_fetch=False) -> JsonPayload: ...
+    def set(self, url: str, data) -> None: ...
 
-    @staticmethod
-    async def get_or_fetch_group(
-        urls: list[str], force_fetch=False
-    ) -> dict[Url, JsonPayload]: ...
+    def clear(self, url: str) -> None: ...
 
-    @staticmethod
-    def set(url: str, data) -> None: ...
-
-    @staticmethod
-    def clear(url: str) -> None: ...
-
-    @staticmethod
-    def contains(url: str) -> bool: ...
+    def contains(self, url: str) -> bool: ...

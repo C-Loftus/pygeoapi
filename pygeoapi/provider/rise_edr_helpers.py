@@ -2,24 +2,18 @@ from copy import deepcopy
 import datetime
 import json
 import logging
-import math
-from typing import ClassVar, Optional, Tuple
+from typing import Optional, Tuple
 import shapely.wkt
 from typing_extensions import assert_never
 
 import shapely  # type: ignore
 
 from pygeoapi.provider.base import (
-    ProviderConnectionError,
-    ProviderNoDataError,
     ProviderQueryError,
 )
 import asyncio
-import aiohttp  # type: ignore
-import shelve
 
 from pygeoapi.provider.rise_api_types import (
-    CacheInterface,
     Coverage,
     CoverageCollection,
     CoverageRange,
@@ -29,10 +23,10 @@ from pygeoapi.provider.rise_api_types import (
     Url,
     ZType,
 )
+from pygeoapi.provider.rise_cache import RISECache
 
 
 LOGGER = logging.getLogger(__name__)
-HEADERS = {"accept": "application/vnd.api+json"}
 
 
 def parse_z(z: str) -> Optional[Tuple[ZType, list[int]]]:
@@ -103,187 +97,6 @@ def getResultUrlFromCatalogUrl(url: str) -> str:
     return f"https://data.usbr.gov/rise/api/result?itemId={get_trailing_id(url)}"
 
 
-def merge_pages(pages: dict[Url, JsonPayload]):
-    # Initialize variables to hold the URL and combined data
-    combined_url = None
-    combined_data = None
-
-    for url, content in pages.items():
-        if combined_url is None:
-            combined_url = url  # Set the URL from the first dictionary
-        if combined_data is None:
-            combined_data = content
-        else:
-            data = content.get("data", [])
-            if not data:
-                continue
-
-            combined_data["data"].extend(data)
-
-    # Create the merged dictionary with the combined URL and data
-    merged_dict = {combined_url: combined_data}
-
-    return merged_dict
-
-
-async def fetch_url(url: str) -> dict:
-    async with aiohttp.ClientSession(headers=HEADERS) as session:
-        async with session.get(url, headers=HEADERS) as response:
-            try:
-                return await response.json()
-            except Exception as e:
-                LOGGER.error(f"{e}: Text: {await response.text()}, URL: {url}")
-                raise e
-
-
-async def fetch_url_group(
-    urls: list[str],
-):
-    tasks = [asyncio.create_task(fetch_url(url)) for url in urls]
-
-    results = {url: {} for url in urls}
-
-    for coroutine, url in zip(asyncio.as_completed(tasks), urls):
-        result = await coroutine
-        results[url] = result
-        RISECache.set(url, result)
-
-    return results
-
-
-class SingletonMeta(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            instance = super().__call__(*args, **kwargs)
-            cls._instances[cls] = instance
-        return cls._instances[cls]
-
-
-class RISECache(CacheInterface):
-    db: ClassVar[str] = "tests/data/risedb"
-
-    @staticmethod
-    async def get_or_fetch(url, force_fetch=False):
-        """Send a get request or grab it locally if it already exists in the cache"""
-
-        with shelve.open(RISECache.db) as db:
-            if url in db and not force_fetch:
-                return db[url]
-            else:
-                res = await fetch_url(url)
-                db[url] = res
-                return res
-
-    @staticmethod
-    def get_or_fetch_parameters(force_fetch=False) -> dict[str, dict]:
-        fields = {}
-
-        pages = RISECache.get_or_fetch_all_pages(
-            "https://data.usbr.gov/rise/api/parameter",
-            force_fetch=force_fetch,
-        )
-        res = merge_pages(pages)
-        for k, v in res.items():
-            if k is None or v is None:
-                raise ProviderConnectionError("Error fetching parameters")
-
-        # get the value of a dict with one value without
-        # needed to know the key name. This is just the
-        # merged json payload
-        res: dict = next(iter(res.values()))
-        if res is None:
-            raise ProviderNoDataError
-
-        for item in res["data"]:
-            param = item["attributes"]
-            # TODO check if this should be a string or a number
-            fields[str(param["_id"])] = {
-                "type": param["parameterUnit"],
-                "title": param["parameterName"],
-                "description": param["parameterDescription"],
-                "x-ogc-unit": param["parameterUnit"],
-            }
-
-        return fields
-
-    @staticmethod
-    async def get_or_fetch_group(urls: list[str], force_fetch=False):
-        """Send a get request to all urls or grab it locally if it already exists in the cache"""
-
-        with shelve.open(RISECache.db) as db:
-            urls_not_in_cache = [url for url in urls if url not in db or force_fetch]
-            urls_in_cache = [url for url in urls if url in db and not force_fetch]
-
-            remote_fetch = fetch_url_group(urls_not_in_cache)
-
-            local_fetch: dict[Url, JsonPayload] = {
-                url: db[url] for url in urls_in_cache
-            }
-
-            local_fetch.update(await remote_fetch)
-
-            return local_fetch
-
-    @staticmethod
-    def set(url: str, data):
-        with shelve.open(RISECache.db, "w") as db:
-            db[url] = data
-
-    @staticmethod
-    def reset():
-        with shelve.open(RISECache.db, "w") as db:
-            for key in db:
-                del db[key]
-
-    @staticmethod
-    def clear(url: str):
-        with shelve.open(RISECache.db, "w") as db:
-            if url not in db:
-                return
-
-            del db[url]
-
-    @staticmethod
-    def contains(url: str) -> bool:
-        with shelve.open(RISECache.db) as db:
-            return url in db
-
-    @staticmethod
-    def get(url: str):
-        with shelve.open(RISECache.db) as db:
-            return db[url]
-
-    @staticmethod
-    def get_or_fetch_all_pages(url: str, force_fetch=False) -> dict[Url, JsonPayload]:
-        # max number of items you can query
-        MAX_ITEMS_PER_PAGE = 100
-
-        # Get the first response that contains the list of pages
-        response = asyncio.run(RISECache.get_or_fetch(url))
-
-        NOT_PAGINATED = "meta" not in response
-        if NOT_PAGINATED:
-            return {url: response}
-
-        total_items = response["meta"]["totalItems"]
-
-        pages_to_complete = math.ceil(total_items / MAX_ITEMS_PER_PAGE)
-
-        # Construct all the urls for the pages
-        #  that we will then fetch in parallel
-        # to get all the data for the endpoint
-        urls = [
-            f"{url}?page={page}&itemsPerPage={MAX_ITEMS_PER_PAGE}"
-            for page in range(1, int(pages_to_complete) + 1)
-        ]
-
-        pages = asyncio.run(RISECache.get_or_fetch_group(urls, force_fetch=force_fetch))
-
-        return pages
-
-
 def flatten_values(input: dict[str, list[str]]) -> list[str]:
     output = []
     for _, v in input.items():
@@ -332,6 +145,7 @@ class LocationHelper:
     @staticmethod
     def get_parameters(
         allLocations: LocationResponse,
+        cache: RISECache,
     ) -> dict[locationId, paramIdList]:
         locationsToCatalogItems = LocationHelper.get_catalogItemURLs(allLocations)
 
@@ -339,7 +153,7 @@ class LocationHelper:
 
         for location, catalogItems in locationsToCatalogItems.items():
             urlItemMapper: dict[str, dict] = asyncio.run(
-                RISECache.get_or_fetch_group(catalogItems)
+                cache.get_or_fetch_group(catalogItems)
             )  # type: ignore since the function doesn't know it is specifically for a catalogitem, but we know it is
 
             try:
@@ -378,7 +192,7 @@ class LocationHelper:
 
     @staticmethod
     def filter_by_properties(
-        response: LocationResponse, select_properties: list[str] | str
+        response: LocationResponse, select_properties: list[str] | str, cache: RISECache
     ) -> LocationResponse:
         list_of_properties: list[str] = (
             [select_properties]
@@ -386,7 +200,7 @@ class LocationHelper:
             else select_properties
         )
 
-        locationsToParams = LocationHelper.get_parameters(response)
+        locationsToParams = LocationHelper.get_parameters(response, cache)
         for param in list_of_properties:
             for location, paramList in locationsToParams.items():
                 if param not in paramList:
@@ -615,18 +429,22 @@ class LocationHelper:
         return {"type": "FeatureCollection", "features": features}
 
     @staticmethod
-    def get_results(catalogItemEndpoints: list[str]) -> dict[Url, JsonPayload]:
+    def get_results(
+        catalogItemEndpoints: list[str], cache: RISECache
+    ) -> dict[Url, JsonPayload]:
         result_endpoints = [
             f"https://data.usbr.gov/rise/api/result?page=1&itemsPerPage=25&itemId={get_trailing_id(endpoint)}"
             for endpoint in catalogItemEndpoints
         ]
 
-        fetched_result = asyncio.run(RISECache.get_or_fetch_group(result_endpoints))
+        fetched_result = asyncio.run(cache.get_or_fetch_group(result_endpoints))
 
         return fetched_result
 
     @staticmethod
-    def fill_catalogItems(response: LocationResponse, add_results: bool = False):
+    def fill_catalogItems(
+        response: LocationResponse, cache: RISECache, add_results: bool = False
+    ):
         """Given a location, fill in the catalog items within it for it can be more easily used for complex joins"""
 
         new = deepcopy(response)
@@ -638,7 +456,7 @@ class LocationHelper:
         catalogItemUrls = flatten_values(locationToCatalogItemUrls)
         #
         catalogItemUrlToResponse = asyncio.run(
-            RISECache.get_or_fetch_group(catalogItemUrls)
+            cache.get_or_fetch_group(catalogItemUrls)
         )
 
         if add_results:
@@ -647,7 +465,7 @@ class LocationHelper:
                 "Duplicate result urls when adding results to the catalog items"
             )
             LOGGER.error(f"Fetching {resultUrls}; {len(resultUrls)} in total")
-            results = asyncio.run(RISECache.get_or_fetch_group(resultUrls))
+            results = asyncio.run(cache.get_or_fetch_group(resultUrls))
 
         for i, location in enumerate(new["data"]):
             for j, catalogitem in enumerate(
@@ -682,10 +500,12 @@ class LocationHelper:
         return new
 
     @staticmethod
-    def _fields_to_covjson(only_include_ids: Optional[list[str]] = None) -> dict:
+    def _fields_to_covjson(
+        cache: RISECache, only_include_ids: Optional[list[str]] = None
+    ) -> dict:
         paramIdsToMetadata: dict[str, Parameter] = {}
 
-        fieldsToGeoJsonOutput = RISECache.get_or_fetch_parameters()
+        fieldsToGeoJsonOutput = cache.get_or_fetch_parameters()
         for f in fieldsToGeoJsonOutput:
             if only_include_ids and f not in only_include_ids:
                 continue
@@ -707,10 +527,12 @@ class LocationHelper:
         return paramIdsToMetadata
 
     @staticmethod
-    def to_covjson(location_response: LocationResponse) -> CoverageCollection:
+    def to_covjson(
+        location_response: LocationResponse, cache: RISECache
+    ) -> CoverageCollection:
         # Fill in the catalog items so we can more easily join across them
         expanded_response = LocationHelper.fill_catalogItems(
-            location_response, add_results=True
+            location_response, cache, add_results=True
         )
 
         allCoverages: list[Coverage] = []
@@ -812,7 +634,7 @@ class LocationHelper:
                 allCoverages.append(coverage_item)
 
         filtered_params = LocationHelper._fields_to_covjson(
-            only_include_ids=relevant_fields
+            cache, only_include_ids=relevant_fields
         )
 
         templated_response: CoverageCollection = {

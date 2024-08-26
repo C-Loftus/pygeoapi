@@ -30,3 +30,5 @@ ndg-httpsclient
 pyasn1
 
 pre-commit
+
+redis

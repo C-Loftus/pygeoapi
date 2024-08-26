@@ -1,22 +1,20 @@
 import json
 
+from pygeoapi.provider.rise_edr_share import merge_pages
 import pytest
 import shapely.wkt
 
 from pygeoapi.provider.base import ProviderQueryError
 from pygeoapi.provider.rise_edr_helpers import (
-    CacheInterface,
     LocationHelper,
-    fetch_url_group,
     flatten_values,
-    fetch_url,
-    RISECache,
     getResultUrlFromCatalogUrl,
-    merge_pages,
     parse_bbox,
     parse_z,
     ZType,
 )
+
+from pygeoapi.provider.rise_cache import RISECache, fetch_url
 
 import shapely
 
@@ -60,7 +58,7 @@ def test_fetch_group():
         "https://data.usbr.gov/rise/api/catalog-item/128564",
     ]
 
-    resp = asyncio.run(fetch_url_group(urls))
+    resp = asyncio.run(RISECache.fetch_and_set_url_group(urls))
     assert len(resp) == 3
     assert None not in resp
 
@@ -135,11 +133,6 @@ def test_fetch_all_only_fetches_one_if_one_page():
 
     res = requests.get(url, headers={"accept": "application/vnd.api+json"}).json()
     assert res["data"] == pages[url]["data"]
-
-
-def test_interface():
-    with pytest.raises(TypeError):
-        _ = CacheInterface()  # type: ignore
 
 
 def test_z_parse():
@@ -315,11 +308,14 @@ def test_fill_catalogItems():
 
 def test_cache_clears():
     RISECache.set("https://data.usbr.gov/rise/api/catalog-item/128562", "test")
-    assert RISECache.get("https://data.usbr.gov/rise/api/catalog-item/128562") == "test"
+    assert (
+        RISECache.get_or_fetch("https://data.usbr.gov/rise/api/catalog-item/128562")
+        == "test"
+    )
 
     RISECache.clear("https://data.usbr.gov/rise/api/catalog-item/128562")
     with pytest.raises(KeyError):
-        RISECache.get("https://data.usbr.gov/rise/api/catalog-item/128562")
+        RISECache.get_or_fetch("https://data.usbr.gov/rise/api/catalog-item/128562")
 
 
 def test_cache():
