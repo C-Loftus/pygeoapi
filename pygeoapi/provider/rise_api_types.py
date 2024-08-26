@@ -6,13 +6,18 @@ class EDRQuery(TypedDict):
     data_queries: list[dict]
 
 
+class LocationDataCoordinates(TypedDict):
+    type: Literal["Point", "Polygon"]
+    coordinates: list[float]
+
+
 class LocationDataAttributes(TypedDict):
     _id: int
     locationParentId: Optional[str]
     locationName: str
     locationDescription: str
     locationStatusId: int
-    locationCoordinates: dict
+    locationCoordinates: LocationDataCoordinates
     elevation: Optional[str]
     createDate: str
     updateDate: str

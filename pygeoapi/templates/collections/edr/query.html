@@ -274,14 +274,16 @@
             layer.bindPopup(html);
         }
     });
-    {% if data.type == "FeatureCollection" and data.features and data.features[0]['geometry']['type'] == 'Point' %}
-    var markers = L.markerClusterGroup({
+    {% if data.type == "FeatureCollection" and data.features %}
+        var markers = L.markerClusterGroup({
         disableClusteringAtZoom: 9,
         chunkedLoading: true,
         chunkInterval: 500,
     });
     markers.clearLayers().addLayer(items);
     map.addLayer(markers);
+    {% else %}
+    map.addLayer(items);
     {% endif %}
     map.fitBounds(items.getBounds(), {maxZoom: 15});
     {% endif %}

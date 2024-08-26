@@ -113,8 +113,10 @@ class RiseEDRProvider(BaseEDRProvider):
 
         query_args = [crs, select_properties, datetime_, location_id]
 
-        if not any(query_args):
-            return LocationHelper.to_geojson(response)
+        if not any(query_args) or format_ == "geojson":
+            return LocationHelper.to_geojson(
+                response, single_feature=True if location_id else False
+            )
         else:
             return LocationHelper.to_covjson(response)
 
@@ -122,7 +124,7 @@ class RiseEDRProvider(BaseEDRProvider):
         if self._fields:
             return self._fields
 
-        self._fields = RISECache.get_parameters()
+        self._fields = RISECache.get_or_fetch_parameters()
 
         return self._fields
 

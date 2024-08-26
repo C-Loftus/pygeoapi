@@ -376,6 +376,6 @@ def test_expand_with_results():
 
 
 def test_fields_are_unique():
-    field_ids = RISECache.get_parameters().keys()
+    field_ids = RISECache.get_or_fetch_parameters().keys()
     length = len(field_ids)
     assert length == len(set(field_ids))

@@ -177,11 +177,12 @@ class RISECache(CacheInterface):
                 return res
 
     @staticmethod
-    def get_parameters() -> dict[str, dict]:
+    def get_or_fetch_parameters(force_fetch=False) -> dict[str, dict]:
         fields = {}
 
         pages = RISECache.get_or_fetch_all_pages(
             "https://data.usbr.gov/rise/api/parameter",
+            force_fetch=force_fetch,
         )
         res = merge_pages(pages)
         for k, v in res.items():
@@ -575,10 +576,21 @@ class LocationHelper:
         return location_response
 
     @staticmethod
-    def to_geojson(location_response: LocationResponse, single_feature: bool = False) -> dict:
+    def to_geojson(
+        location_response: LocationResponse, single_feature: bool = False
+    ) -> dict:
         features = []
 
         for location_feature in location_response["data"]:
+            # z = location_feature["attributes"]["elevation"]
+            # if z is not None:
+            #     location_feature["attributes"]["locationCoordinates"][
+            #         "coordinates"
+            #     ].append(float(z))
+            #     LOGGER.error(
+            #         location_feature["attributes"]["locationCoordinates"]["coordinates"]
+            #     )
+
             feature_as_geojson = {
                 "type": "Feature",
                 "id": location_feature["attributes"]["_id"],
@@ -673,7 +685,7 @@ class LocationHelper:
     def _fields_to_covjson(only_include_ids: Optional[list[str]] = None) -> dict:
         paramIdsToMetadata: dict[str, Parameter] = {}
 
-        fieldsToGeoJsonOutput = RISECache.get_parameters()
+        fieldsToGeoJsonOutput = RISECache.get_or_fetch_parameters()
         for f in fieldsToGeoJsonOutput:
             if only_include_ids and f not in only_include_ids:
                 continue
@@ -731,10 +743,9 @@ class LocationHelper:
                     ]
 
                 else:
-                    results, times = [], []
+                    # results, times = [], []
                     # Since coveragejson does not allow a parameter without results,
                     # we can skip adding the parameter/location combination all together
-                    # Figure out what we want to do for these params that are associated but have no data
                     continue
 
                 paramToCoverage[id] = {
@@ -787,9 +798,9 @@ class LocationHelper:
                                     ]["type"],
                                     "coordinates": ["x", "y"],
                                     "values": [
-                                            location_feature["attributes"][
-                                                "locationCoordinates"
-                                            ]["coordinates"]
+                                        location_feature["attributes"][
+                                            "locationCoordinates"
+                                        ]["coordinates"]
                                     ],
                                 },
                                 "t": {"values": times},
@@ -800,13 +811,13 @@ class LocationHelper:
 
                 allCoverages.append(coverage_item)
 
-        filterd_params = LocationHelper._fields_to_covjson(
+        filtered_params = LocationHelper._fields_to_covjson(
             only_include_ids=relevant_fields
         )
 
         templated_response: CoverageCollection = {
             "type": "CoverageCollection",
-            "parameters": filterd_params,
+            "parameters": filtered_params,
             "referencing": [
                 {
                     "coordinates": ["x", "y"],

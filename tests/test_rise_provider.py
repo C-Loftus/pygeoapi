@@ -1,72 +1,38 @@
-# =================================================================
-#
-# Authors: Colton Loftus
-#
-# Copyright (c) 2024 Colton Loftus
-#
-# Permission is hereby granted, free of charge, to any person
-# obtaining a copy of this software and associated documentation
-# files (the "Software"), to deal in the Software without
-# restriction, including without limitation the rights to use,
-# copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following
-# conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-# OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-# WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-# OTHER DEALINGS IN THE SOFTWARE.
-#
-# =================================================================
-
 import requests
 import pytest
 
+from pygeoapi.provider.rise import RiseProvider
+from pygeoapi.provider.rise_api_types import CoverageCollection
 from pygeoapi.provider.rise_edr import RiseEDRProvider
 
 
 @pytest.fixture()
 def config():
     return {
-        "name": "gpkg",
-        "type": "feature",
-        "data": "tests/data/hu02.gpkg",
-        "id_field": "HUC2",
+        "cache": "shelf",
     }
 
 
 def test_location_locationId(config):
     p = RiseEDRProvider(config)
-    out = p.locations(location_id=1)
+    out = p.locations(location_id=1, format_="covjson")
     # Returns 3 since we have 3 parameters in the location
     assert len(out["coverages"]) == 3
     # invalid location should return nothing
     out = p.locations(location_id=1111111111111111)
     assert len(out["coverages"]) == 0
 
-def test_location_datetime(config):
-    p = RiseEDRProvider(config)
-    out = p.locations(datetime_="2024-03-29T15:49:57+00:00")
-    for i in out["features"]:
-        if i["id"] == 6902:
-            break
-    else:
-        assert False
+    geojson_out: dict = p.locations(location_id=1, format_="geojson")  # type: ignore For some reason mypy complains
+    assert geojson_out["type"] == "Feature"
+    assert geojson_out["id"] == 1
 
 
 def test_get_fields(config):
     p = RiseEDRProvider(config)
     fields = p.get_fields()
-    assert "DUMMY_PARAM" not in fields
-    assert "18" in fields
+
+    # test to make sure a particular field is there
+    assert fields["2"]["title"] == "Lake/Reservoir Elevation"
 
     assert requests.get(
         "https://data.usbr.gov/rise/api/parameter?page=1&itemsPerPage=25",
@@ -80,23 +46,31 @@ def test_location_select_properties(config):
 
     p = RiseEDRProvider(config)
 
-    out = p.locations(select_properties="DUMMY-PARAM")
+    out = p.locations(select_properties="DUMMY-PARAM", format_="geojson")
     assert len(out["features"]) == 0
 
-    out = p.locations(select_properties="18")
+    out = p.locations(select_properties="18", format_="geojson")
     assert len(out["features"]) > 0
+
+    out = p.locations(select_properties="2", format_="geojson")
+    for f in out["features"]:
+        if f["id"] == 1:
+            break
+    else:
+        # if location 1 isn't in the responses, then something is wrong
+        assert False
 
 
 def test_location_datetime(config):
     p = RiseEDRProvider(config)
-    out = p.locations(datetime_="2024-03-29T15:49:57+00:00")
-    for i in out["coverages"]:
-        if i["type"] == 6902:
+    out = p.locations(datetime_="2024-03-29T15:49:57+00:00", format_="geojson")
+    for i in out["features"]:
+        if i["id"] == 6902:
             break
     else:
         assert False
 
-    out = p.locations(datetime="2024-03-29/..")
+    out = p.locations(datetime="2024-03-29/..", format_="geojson")
     for i in out["features"]:
         if i["id"] == 6902:
             break
@@ -111,14 +85,31 @@ def test_location_datetime(config):
 #     assert len(out["features"]) > 0
 
 
-def test_item():
-    pass
+def test_item(config):
+    p = RiseProvider(config)
+    out = p.items(itemId="1")
+    out = out
+    assert out["id"] == 1
+    assert out["type"] == "Feature"
 
 
-def test_cube():
-    pass
+def test_cube(config):
+    p = RiseEDRProvider(config)
+
+    # random location near corpus christi should return only one feature
+    out = p.area(
+        wkt="POLYGON ((-98.96918309080456 28.682352643651612, -98.96918309080456 26.934669197978764, -94.3740448509505 26.934669197978764, -94.3740448509505 28.682352643651612, -98.96918309080456 28.682352643651612))"
+    )
+
+    assert out["type"] == "FeatureCollection"
+    assert len(out["features"]) == 1
+    assert out["features"][0]["id"] == 291
 
 
 def test_polygon_output():
-    # polygons 3526
-    pass
+    # location id 3526 is a polygon
+    p = RiseEDRProvider(config)
+
+    out = p.locations(location_id=3526, format_="covjson")
+
+    assert out["type"] == "CoverageCollection"
