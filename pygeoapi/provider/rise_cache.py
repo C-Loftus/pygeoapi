@@ -1,14 +1,16 @@
 import asyncio
+import json
 import logging
 import math
 import shelve
-from typing import ClassVar, Literal, Union
+from typing import ClassVar, Literal, Optional, Union
 from typing_extensions import assert_never
 from pygeoapi.provider.base import ProviderConnectionError, ProviderNoDataError
 from pygeoapi.provider.rise_api_types import CacheInterface, JsonPayload, Url
 import aiohttp
 from pygeoapi.provider.rise_edr_share import merge_pages
 import redis
+from datetime import timedelta
 
 HEADERS = {"accept": "application/vnd.api+json"}
 
@@ -38,9 +40,9 @@ class SingletonMeta(type):
 class ShelveCache(CacheInterface):
     db: ClassVar[str] = "tests/data/risedb"
 
-    def set(self, url: str, data):
+    def set(self, url: str, json_data: dict, _ttl: Optional[timedelta] = None):
         with shelve.open(ShelveCache.db, "w") as db:
-            db[url] = data
+            db[url] = json_data
 
     def reset(self):
         with shelve.open(ShelveCache.db, "w") as db:
@@ -64,12 +66,15 @@ class ShelveCache(CacheInterface):
 
 
 class RedisCache(CacheInterface):
-    def __init__(self):
-        self.db = redis.Redis()
+    def __init__(self, ttl: timedelta = timedelta(hours=24)):
+        self.db = redis.Redis(host="redis", port=6379, decode_responses=False)
+        self.ttl = ttl
 
-    def set(self, url: str, data):
+    def set(self, url: str, json_data: dict, _ttl: Optional[timedelta] = None):
         # Serialize the data before storing it in Redis
-        self.db.set(url, pickle.dumps(data))
+        self.db.set(url, json.dumps(json_data))
+        ttl = min(_ttl, self.ttl) if _ttl else self.ttl
+        self.db.expire(url, time=ttl)
 
     def reset(self):
         # Delete all keys in the current Redis database
@@ -88,7 +93,7 @@ class RedisCache(CacheInterface):
         data = self.db.get(url)
         if data is None:
             raise KeyError(f"{url} not found in cache")
-        return pickle.loads(data)
+        return json.loads(data) # type: ignore
 
 
 class RISECache(CacheInterface):
@@ -111,8 +116,8 @@ class RISECache(CacheInterface):
             case _:
                 assert_never(implementation)
 
-    def set(self, url: str, data):
-        return self.cache_impl.set(url, data)
+    def set(self, url: str, json_data: dict, _ttl: Optional[timedelta] = None):
+        return self.cache_impl.set(url, json_data, _ttl)
 
     def clear(self, url: str):
         return self.cache_impl.clear(url)
@@ -120,7 +125,7 @@ class RISECache(CacheInterface):
     def reset(self):
         return self.cache_impl.reset()
 
-    def get(self, url: str):
+    def get(self, url: str) -> dict:
         return self.cache_impl.get(url)
 
     async def get_or_fetch(self, url, force_fetch=False):

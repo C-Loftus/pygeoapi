@@ -1,6 +1,12 @@
 version: '3'
 
 services:
+
+  redis:
+    image: redislabs/redismod
+    ports:
+      - '6379:6379'
+      
   pygeoapi:
     build: .
     container_name: pygeoapi
@@ -20,3 +26,5 @@ services:
       - ./.venv:/pygeoapi/.venv
 
       # -  ${PWD}/:/pygeoapi
+    depends_on:
+      - redis

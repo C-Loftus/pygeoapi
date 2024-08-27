@@ -33,7 +33,7 @@ class RiseEDRProvider(BaseEDRProvider):
 
         :returns: pygeoapi.provider.base_edr.RiseEDRProvider
         """
-        self.cache = RISECache(provider_def.get("implementation", "shelve"))
+        self.cache = RISECache(provider_def.get("implementation", "redis"))
 
         provider_def = {
             "name": "Rise EDR",

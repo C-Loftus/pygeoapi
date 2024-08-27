@@ -5,11 +5,6 @@ from pygeoapi.provider.rise import RiseProvider
 from pygeoapi.provider.rise_edr import RiseEDRProvider
 
 
-@pytest.fixture()
-def config():
-    return {
-        "cache": "shelf",
-    }
 
 
 def test_location_locationId(config):
@@ -105,7 +100,7 @@ def test_cube(config):
     assert out["features"][0]["id"] == 291
 
 
-def test_polygon_output():
+def test_polygon_output(config):
     # location id 3526 is a polygon
     p = RiseEDRProvider(config)
 

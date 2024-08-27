@@ -1,4 +1,7 @@
+from datetime import timedelta
 import json
+
+import redis
 
 from pygeoapi.provider.rise_edr_share import merge_pages
 import pytest
@@ -51,19 +54,21 @@ def test_remove_location():
         assert dropped["data"][0]["attributes"]["_id"] != 6902
 
 
-def test_fetch_group():
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+def test_fetch_group(cache_type):
     urls = [
         "https://data.usbr.gov/rise/api/catalog-item/128562",
         "https://data.usbr.gov/rise/api/catalog-item/128563",
         "https://data.usbr.gov/rise/api/catalog-item/128564",
     ]
-
-    resp = asyncio.run(RISECache.fetch_and_set_url_group(urls))
+    cache = RISECache(cache_type)
+    resp = asyncio.run(cache.fetch_and_set_url_group(urls))
     assert len(resp) == 3
     assert None not in resp
 
 
-def test_get_parameters():
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+def test_get_parameters(cache_type):
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
         items = LocationHelper.get_catalogItemURLs(data)
@@ -72,16 +77,19 @@ def test_get_parameters():
 
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
-        locationsToParams = LocationHelper.get_parameters(data)
+        cache = RISECache(cache_type)
+        locationsToParams = LocationHelper.get_parameters(data, cache)
         assert len(locationsToParams.keys()) > 0
         # Test it contains a random catalog item from the location
-        assert RISECache.contains("https://data.usbr.gov/rise/api/catalog-item/128573")
+        assert cache.contains("https://data.usbr.gov/rise/api/catalog-item/128573")
         assert "18" in flatten_values(locationsToParams)  # type: ignore
 
 
-def test_fetch_all_pages():
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+def test_fetch_all_pages(cache_type):
     url = "https://data.usbr.gov/rise/api/location"
-    pages = RISECache.get_or_fetch_all_pages(url)
+    cache = RISECache(cache_type)
+    pages = cache.get_or_fetch_all_pages(url)
 
     # There are 6 pages so we should get 6 responses
     assert len(pages) == 6
@@ -114,10 +122,11 @@ def test_merge_pages():
         assert len(content["data"]) == 4
 
 
-def test_integration_merge_pages():
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+def test_integration_merge_pages(cache_type):
     url = "https://data.usbr.gov/rise/api/location"
-
-    pages = RISECache.get_or_fetch_all_pages(url, force_fetch=True)
+    cache = RISECache(cache_type)
+    pages = cache.get_or_fetch_all_pages(url, force_fetch=True)
     merged = merge_pages(pages)
     for url, content in merged.items():
         assert content is not None
@@ -126,9 +135,11 @@ def test_integration_merge_pages():
         break
 
 
-def test_fetch_all_only_fetches_one_if_one_page():
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+def test_fetch_all_only_fetches_one_if_one_page(cache_type):
     url = "https://data.usbr.gov/rise/api/location/1"
-    pages = RISECache.get_or_fetch_all_pages(url, force_fetch=True)
+    cache = RISECache(cache_type)
+    pages = cache.get_or_fetch_all_pages(url, force_fetch=True)
     assert len(pages) == 1
 
     res = requests.get(url, headers={"accept": "application/vnd.api+json"}).json()
@@ -268,13 +279,15 @@ def test_get_or_fetch_group():
         "https://data.usbr.gov/rise/api/location?page=1&itemsPerPage=25",
     ]
 
-    urlToContent = asyncio.run(RISECache.get_or_fetch_group(group))
+    cache = RISECache()
+    urlToContent = asyncio.run(cache.get_or_fetch_group(group))
 
     assert len(urlToContent.values()) == 2
     assert urlToContent[group[1]]["data"][0]["id"] == "/rise/api/location/509"
 
 
-def test_fill_catalogItems():
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+def test_fill_catalogItems(cache_type):
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
         assert len(data["data"]) == 25
@@ -290,8 +303,8 @@ def test_fill_catalogItems():
         # Fill in the catalog items and make sure that the only two
         # remaining catalog items are the catalog items associated with location
         # 6902 since we previously filtered to just that location
-
-        expanded = LocationHelper.fill_catalogItems(res)
+        cache = RISECache(cache_type)
+        expanded = LocationHelper.fill_catalogItems(res, cache)
 
         assert expanded["data"][0]["relationships"]["catalogItems"] is not None
 
@@ -306,33 +319,38 @@ def test_fill_catalogItems():
         )
 
 
-def test_cache_clears():
-    RISECache.set("https://data.usbr.gov/rise/api/catalog-item/128562", "test")
-    assert (
-        RISECache.get_or_fetch("https://data.usbr.gov/rise/api/catalog-item/128562")
-        == "test"
-    )
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+def test_cache_clears(cache_type):
+    cache = RISECache(cache_type)
+    cache.set("https://data.usbr.gov/rise/api/catalog-item/128562", {"data": "test"})
+    assert asyncio.run(
+        cache.get_or_fetch("https://data.usbr.gov/rise/api/catalog-item/128562")
+    ) == {"data": "test"}
 
-    RISECache.clear("https://data.usbr.gov/rise/api/catalog-item/128562")
+    cache.clear("https://data.usbr.gov/rise/api/catalog-item/128562")
     with pytest.raises(KeyError):
-        RISECache.get_or_fetch("https://data.usbr.gov/rise/api/catalog-item/128562")
+        asyncio.run(
+            cache.get_or_fetch("https://data.usbr.gov/rise/api/catalog-item/128562")
+        )
 
 
-def test_cache():
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+def test_cache(cache_type):
     url = "https://data.usbr.gov/rise/api/catalog-item/128562"
 
     start = time.time()
-    RISECache.clear(url)
-    remote_res = asyncio.run(RISECache.get_or_fetch(url))
+    cache = RISECache(cache_type)
+    cache.clear(url)
+    remote_res = asyncio.run(cache.get_or_fetch(url))
     assert remote_res
     network_time = time.time() - start
 
-    assert RISECache.contains(url)
+    assert cache.contains(url)
 
     start = time.time()
-    RISECache.clear(url)
-    assert not RISECache.contains(url)
-    disk_res = asyncio.run(RISECache.get_or_fetch(url))
+    cache.clear(url)
+    assert not cache.contains(url)
+    disk_res = asyncio.run(cache.get_or_fetch(url))
     assert disk_res
     disk_time = time.time() - start
 
@@ -347,14 +365,15 @@ def test_make_result():
     assert resp.ok
 
 
-def test_expand_with_results():
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+def test_expand_with_results(cache_type):
     with open("tests/data/rise/location.json") as f:
         data = json.load(f)
 
         # filter just 268 which contains catalog item 4 which has results
         res = LocationHelper.filter_by_id(data, identifier="268")
-
-        expanded = LocationHelper.fill_catalogItems(res, add_results=True)
+        cache = RISECache(cache_type)
+        expanded = LocationHelper.fill_catalogItems(res, cache, add_results=True)
 
         assert expanded["data"][0]["relationships"]["catalogItems"] is not None
 
@@ -371,7 +390,41 @@ def test_expand_with_results():
     assert "/rise/api/catalog-item/11279" in ids
 
 
-def test_fields_are_unique():
-    field_ids = RISECache.get_or_fetch_parameters().keys()
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+def test_fields_are_unique(cache_type):
+    cache = RISECache(cache_type)
+    field_ids = cache.get_or_fetch_parameters().keys()
     length = len(field_ids)
     assert length == len(set(field_ids))
+
+
+
+
+
+def test_redis():
+    r = redis.Redis(host="redis", port=6379, db=0)
+    assert r
+    r.set("test", "test")
+    val = r.get("test")
+    assert val == b"test"
+
+
+def test_simple_redis_serialization():
+    cache = RISECache("redis")
+    with open("tests/data/rise/location.json") as f:
+        data = json.load(f)
+        cache.set("test_url_location", data, timedelta(milliseconds=1000))
+        # our interface does not export an atomic set operation, so we need to just block heuristically
+        time.sleep(0.2)
+        val = cache.get("test_url_location")
+        assert val == data
+
+
+def test_redis_wrapper():
+    cache = RISECache("redis")
+    cache.clear("test_url_catalog_item")
+    cache.set("test_url_catalog_item", {}, timedelta(milliseconds=1000))
+    assert cache.get("test_url_catalog_item") == {}
+    time.sleep(1)
+    with pytest.raises(KeyError):
+        cache.get("test_url_catalog_item")

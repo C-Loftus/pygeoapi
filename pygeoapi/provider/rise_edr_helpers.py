@@ -454,7 +454,7 @@ class LocationHelper:
             LocationHelper.get_catalogItemURLs(new)
         )
         catalogItemUrls = flatten_values(locationToCatalogItemUrls)
-        #
+        
         catalogItemUrlToResponse = asyncio.run(
             cache.get_or_fetch_group(catalogItemUrls)
         )
@@ -464,7 +464,7 @@ class LocationHelper:
             assert len(resultUrls) == len(set(resultUrls)), LOGGER.error(
                 "Duplicate result urls when adding results to the catalog items"
             )
-            LOGGER.error(f"Fetching {resultUrls}; {len(resultUrls)} in total")
+            LOGGER.debug(f"Fetching {resultUrls}; {len(resultUrls)} in total")
             results = asyncio.run(cache.get_or_fetch_group(resultUrls))
 
         for i, location in enumerate(new["data"]):

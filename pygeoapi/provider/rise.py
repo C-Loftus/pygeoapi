@@ -26,7 +26,7 @@ class RiseProvider(BaseProvider):
         :param provider_def: provider definition
         """
 
-        self.cache = RISECache(provider_def.get("implementation", "shelve"))
+        self.cache = RISECache(provider_def.get("implementation", "redis"))
 
         super().__init__(provider_def)
 
