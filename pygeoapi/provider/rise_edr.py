@@ -32,8 +32,12 @@ class RiseEDRProvider(BaseEDRProvider):
         :param provider_def: provider definition
 
         :returns: pygeoapi.provider.base_edr.RiseEDRProvider
-        """
-        self.cache = RISECache(provider_def.get("implementation", "redis"))
+        """ 
+        try:
+            self.cache = RISECache(provider_def["cache"])
+        except KeyError:
+            LOGGER.error("You must specify a cache implementation in the config.yml for RISE")
+            raise 
 
         provider_def = {
             "name": "Rise EDR",

@@ -5,10 +5,20 @@ from pygeoapi.provider.rise import RiseProvider
 from pygeoapi.provider.rise_edr import RiseEDRProvider
 
 
+@pytest.fixture(params=["redis", "shelve"])
+def edr_config(request):
+    cache_type = request.param
+    config = {
+        "name": "RISE_EDR_Provider",
+        "type": "edr",
+        "cache": cache_type,
+        "url": "https://data.usbr.gov/rise/api/",
+    }
+    return config
 
 
-def test_location_locationId(config):
-    p = RiseEDRProvider(config)
+def test_location_locationId(edr_config: dict):
+    p = RiseEDRProvider(edr_config)
     out = p.locations(location_id=1, format_="covjson")
     # Returns 3 since we have 3 parameters in the location
     assert len(out["coverages"]) == 3
@@ -21,8 +31,8 @@ def test_location_locationId(config):
     assert geojson_out["id"] == 1
 
 
-def test_get_fields(config):
-    p = RiseEDRProvider(config)
+def test_get_fields(edr_config: dict):
+    p = RiseEDRProvider(edr_config)
     fields = p.get_fields()
 
     # test to make sure a particular field is there
@@ -34,11 +44,11 @@ def test_get_fields(config):
     ).json()["meta"]["totalItems"] == len(fields)
 
 
-def test_location_select_properties(config):
+def test_location_select_properties(edr_config: dict):
     # Currently in pygeoapi we use select_properties as the
     # keyword argument. This is hold over from OAF it seems.
 
-    p = RiseEDRProvider(config)
+    p = RiseEDRProvider(edr_config)
 
     out = p.locations(select_properties="DUMMY-PARAM", format_="geojson")
     assert len(out["features"]) == 0  # type: ignore ; issues with pyright union types
@@ -55,8 +65,8 @@ def test_location_select_properties(config):
         assert False
 
 
-def test_location_datetime(config):
-    p = RiseEDRProvider(config)
+def test_location_datetime(edr_config: dict):
+    p = RiseEDRProvider(edr_config)
     out = p.locations(datetime_="2024-03-29T15:49:57+00:00", format_="geojson")
     for i in out["features"]:  # type: ignore
         if i["id"] == 6902:
@@ -79,16 +89,29 @@ def test_location_datetime(config):
 #     assert len(out["features"]) > 0
 
 
-def test_item(config):
-    p = RiseProvider(config)
+@pytest.fixture(params=["redis", "shelve"])
+def oaf_config(request):
+    cache_type = request.param
+    config = {
+        "name": "RISE_EDR_Provider",
+        "type": "feature",
+        "title_field": "name",
+        "cache": cache_type,
+        "data": "https://data.usbr.gov/rise/api/",
+    }
+    return config
+
+
+def test_item(oaf_config: dict):
+    p = RiseProvider(oaf_config)
     out = p.items(itemId="1")
     out = out
     assert out["id"] == 1
     assert out["type"] == "Feature"
 
 
-def test_cube(config):
-    p = RiseEDRProvider(config)
+def test_cube(edr_config: dict):
+    p = RiseEDRProvider(edr_config)
 
     # random location near corpus christi should return only one feature
     out = p.area(
@@ -100,17 +123,10 @@ def test_cube(config):
     assert out["features"][0]["id"] == 291
 
 
-def test_polygon_output(config):
+def test_polygon_output(edr_config: dict):
     # location id 3526 is a polygon
-    p = RiseEDRProvider(config)
+    p = RiseEDRProvider(edr_config)
 
     out = p.locations(location_id=3526, format_="covjson")
 
     assert out["type"] == "CoverageCollection"
-
-
-@pytest.fixture()
-def redis_config():
-    return {
-        "cache": "redis",
-    }

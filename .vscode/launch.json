@@ -48,7 +48,7 @@
             "request": "launch",
             "module": "pytest",
             "args": [
-                "-xsvvvv",
+                "-svvvv",
                 "${file}"
             ]
         },

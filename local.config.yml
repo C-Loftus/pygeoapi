@@ -318,8 +318,11 @@ resources:
             - type: edr
               name: RiseEDR
               data: https://data.usbr.gov/
+              cache: redis
             - type: feature
               name: pygeoapi.provider.rise.RiseProvider
               data: https://data.usbr.gov/
               entity: Observation
               title_field: name
+              cache: redis
+

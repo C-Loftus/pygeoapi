@@ -26,8 +26,12 @@ class RiseProvider(BaseProvider):
         :param provider_def: provider definition
         """
 
-        self.cache = RISECache(provider_def.get("implementation", "redis"))
-
+        try:
+            self.cache = RISECache(provider_def["cache"])
+        except KeyError:
+            LOGGER.error("You must specify a cache implementation in the config.yml for RISE")
+            raise 
+        
         super().__init__(provider_def)
 
     def items(

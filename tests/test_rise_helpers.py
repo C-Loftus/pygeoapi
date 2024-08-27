@@ -54,51 +54,6 @@ def test_remove_location():
         assert dropped["data"][0]["attributes"]["_id"] != 6902
 
 
-@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
-def test_fetch_group(cache_type):
-    urls = [
-        "https://data.usbr.gov/rise/api/catalog-item/128562",
-        "https://data.usbr.gov/rise/api/catalog-item/128563",
-        "https://data.usbr.gov/rise/api/catalog-item/128564",
-    ]
-    cache = RISECache(cache_type)
-    resp = asyncio.run(cache.fetch_and_set_url_group(urls))
-    assert len(resp) == 3
-    assert None not in resp
-
-
-@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
-def test_get_parameters(cache_type):
-    with open("tests/data/rise/location.json") as f:
-        data = json.load(f)
-        items = LocationHelper.get_catalogItemURLs(data)
-        assert len(items) == 25
-        assert len(flatten_values(items)) == 236
-
-    with open("tests/data/rise/location.json") as f:
-        data = json.load(f)
-        cache = RISECache(cache_type)
-        locationsToParams = LocationHelper.get_parameters(data, cache)
-        assert len(locationsToParams.keys()) > 0
-        # Test it contains a random catalog item from the location
-        assert cache.contains("https://data.usbr.gov/rise/api/catalog-item/128573")
-        assert "18" in flatten_values(locationsToParams)  # type: ignore
-
-
-@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
-def test_fetch_all_pages(cache_type):
-    url = "https://data.usbr.gov/rise/api/location"
-    cache = RISECache(cache_type)
-    pages = cache.get_or_fetch_all_pages(url)
-
-    # There are 6 pages so we should get 6 responses
-    assert len(pages) == 6
-    for url, resp in pages.items():
-        # 100 is the max number of items you can query
-        # so we should get 100 items per page
-        assert resp["meta"]["itemsPerPage"] == 100
-
-
 def test_merge_pages():
     fetched_mock = {
         "https://data.usbr.gov/rise/api/location2": {
@@ -286,119 +241,11 @@ def test_get_or_fetch_group():
     assert urlToContent[group[1]]["data"][0]["id"] == "/rise/api/location/509"
 
 
-@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
-def test_fill_catalogItems(cache_type):
-    with open("tests/data/rise/location.json") as f:
-        data = json.load(f)
-        assert len(data["data"]) == 25
-
-        res = LocationHelper.filter_by_id(data, identifier="6902")
-        assert res["data"][0]["attributes"]["_id"] == 6902
-        assert len(res["data"]) == 1
-        assert (
-            res["data"][0]["relationships"]["catalogItems"]["data"][0]["id"]
-            == "/rise/api/catalog-item/128632"
-        )
-
-        # Fill in the catalog items and make sure that the only two
-        # remaining catalog items are the catalog items associated with location
-        # 6902 since we previously filtered to just that location
-        cache = RISECache(cache_type)
-        expanded = LocationHelper.fill_catalogItems(res, cache)
-
-        assert expanded["data"][0]["relationships"]["catalogItems"] is not None
-
-        assert len(expanded["data"][0]["relationships"]["catalogItems"]["data"]) == 2
-        assert (
-            expanded["data"][0]["relationships"]["catalogItems"]["data"][0]["id"]
-            == "/rise/api/catalog-item/128632"
-        )
-        assert (
-            expanded["data"][0]["relationships"]["catalogItems"]["data"][1]["id"]
-            == "/rise/api/catalog-item/128633"
-        )
-
-
-@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
-def test_cache_clears(cache_type):
-    cache = RISECache(cache_type)
-    cache.set("https://data.usbr.gov/rise/api/catalog-item/128562", {"data": "test"})
-    assert asyncio.run(
-        cache.get_or_fetch("https://data.usbr.gov/rise/api/catalog-item/128562")
-    ) == {"data": "test"}
-
-    cache.clear("https://data.usbr.gov/rise/api/catalog-item/128562")
-    with pytest.raises(KeyError):
-        asyncio.run(
-            cache.get_or_fetch("https://data.usbr.gov/rise/api/catalog-item/128562")
-        )
-
-
-@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
-def test_cache(cache_type):
-    url = "https://data.usbr.gov/rise/api/catalog-item/128562"
-
-    start = time.time()
-    cache = RISECache(cache_type)
-    cache.clear(url)
-    remote_res = asyncio.run(cache.get_or_fetch(url))
-    assert remote_res
-    network_time = time.time() - start
-
-    assert cache.contains(url)
-
-    start = time.time()
-    cache.clear(url)
-    assert not cache.contains(url)
-    disk_res = asyncio.run(cache.get_or_fetch(url))
-    assert disk_res
-    disk_time = time.time() - start
-
-    assert remote_res == disk_res
-    assert disk_time < network_time
-
-
 def test_make_result():
     url = "https://data.usbr.gov/rise/api/catalog-item/128632"
     res = getResultUrlFromCatalogUrl(url)
     resp = requests.get(res)
     assert resp.ok
-
-
-@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
-def test_expand_with_results(cache_type):
-    with open("tests/data/rise/location.json") as f:
-        data = json.load(f)
-
-        # filter just 268 which contains catalog item 4 which has results
-        res = LocationHelper.filter_by_id(data, identifier="268")
-        cache = RISECache(cache_type)
-        expanded = LocationHelper.fill_catalogItems(res, cache, add_results=True)
-
-        assert expanded["data"][0]["relationships"]["catalogItems"] is not None
-
-        assert len(expanded["data"][0]["relationships"]["catalogItems"]["data"]) == 5
-
-    ids = [
-        item["id"]
-        for item in expanded["data"][0]["relationships"]["catalogItems"]["data"]
-    ]
-    assert "/rise/api/catalog-item/4" in ids
-    assert "/rise/api/catalog-item/141" in ids
-    assert "/rise/api/catalog-item/142" in ids
-    assert "/rise/api/catalog-item/144" in ids
-    assert "/rise/api/catalog-item/11279" in ids
-
-
-@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
-def test_fields_are_unique(cache_type):
-    cache = RISECache(cache_type)
-    field_ids = cache.get_or_fetch_parameters().keys()
-    length = len(field_ids)
-    assert length == len(set(field_ids))
-
-
-
 
 
 def test_redis():
@@ -428,3 +275,149 @@ def test_redis_wrapper():
     time.sleep(1)
     with pytest.raises(KeyError):
         cache.get("test_url_catalog_item")
+
+
+@pytest.mark.parametrize("cache_type", ["redis", "shelve"])
+class TestFnsWithCaching:
+    def test_fetch_group(self, cache_type):
+        urls = [
+            "https://data.usbr.gov/rise/api/catalog-item/128562",
+            "https://data.usbr.gov/rise/api/catalog-item/128563",
+            "https://data.usbr.gov/rise/api/catalog-item/128564",
+        ]
+        cache = RISECache(cache_type)
+        resp = asyncio.run(cache.fetch_and_set_url_group(urls))
+        assert len(resp) == 3
+        assert None not in resp
+
+    def test_get_parameters(self, cache_type):
+        with open("tests/data/rise/location.json") as f:
+            data = json.load(f)
+            items = LocationHelper.get_catalogItemURLs(data)
+            assert len(items) == 25
+            assert len(flatten_values(items)) == 236
+
+        with open("tests/data/rise/location.json") as f:
+            data = json.load(f)
+            cache = RISECache(cache_type)
+            locationsToParams = LocationHelper.get_parameters(data, cache)
+            assert len(locationsToParams.keys()) > 0
+            # Test it contains a random catalog item from the location
+            assert cache.contains("https://data.usbr.gov/rise/api/catalog-item/128573")
+            assert "18" in flatten_values(locationsToParams)  # type: ignore
+
+    def test_fetch_all_pages(self, cache_type):
+        url = "https://data.usbr.gov/rise/api/location"
+        cache = RISECache(cache_type)
+        pages = cache.get_or_fetch_all_pages(url)
+
+        # There are 6 pages so we should get 6 responses
+        assert len(pages) == 6
+        for url, resp in pages.items():
+            # 100 is the max number of items you can query
+            # so we should get 100 items per page
+            assert resp["meta"]["itemsPerPage"] == 100
+
+    def test_fields_are_unique(self, cache_type):
+        cache = RISECache(cache_type)
+        field_ids = cache.get_or_fetch_parameters().keys()
+        length = len(field_ids)
+        assert length == len(set(field_ids))
+
+    def test_expand_with_results(self, cache_type):
+        with open("tests/data/rise/location.json") as f:
+            data = json.load(f)
+
+            # filter just 268 which contains catalog item 4 which has results
+            res = LocationHelper.filter_by_id(data, identifier="268")
+            cache = RISECache(cache_type)
+            expanded = LocationHelper.fill_catalogItems(res, cache, add_results=True)
+
+            assert expanded["data"][0]["relationships"]["catalogItems"] is not None
+
+            assert (
+                len(expanded["data"][0]["relationships"]["catalogItems"]["data"]) == 5
+            )
+
+        ids = [
+            item["id"]
+            for item in expanded["data"][0]["relationships"]["catalogItems"]["data"]
+        ]
+        assert "/rise/api/catalog-item/4" in ids
+        assert "/rise/api/catalog-item/141" in ids
+        assert "/rise/api/catalog-item/142" in ids
+        assert "/rise/api/catalog-item/144" in ids
+        assert "/rise/api/catalog-item/11279" in ids
+
+    def test_cache(self, cache_type):
+        url = "https://data.usbr.gov/rise/api/catalog-item/128562"
+
+        start = time.time()
+        cache = RISECache(cache_type)
+        cache.clear(url)
+        remote_res = asyncio.run(cache.get_or_fetch(url))
+        assert remote_res
+        network_time = time.time() - start
+
+        assert cache.contains(url)
+
+        start = time.time()
+        cache.clear(url)
+        assert not cache.contains(url)
+        disk_res = asyncio.run(cache.get_or_fetch(url))
+        assert disk_res
+        disk_time = time.time() - start
+
+        assert remote_res == disk_res
+        assert disk_time < network_time
+
+    def test_fill_catalogItems(self, cache_type):
+        with open("tests/data/rise/location.json") as f:
+            data = json.load(f)
+            assert len(data["data"]) == 25
+
+            res = LocationHelper.filter_by_id(data, identifier="6902")
+            assert res["data"][0]["attributes"]["_id"] == 6902
+            assert len(res["data"]) == 1
+            assert (
+                res["data"][0]["relationships"]["catalogItems"]["data"][0]["id"]
+                == "/rise/api/catalog-item/128632"
+            )
+
+            # Fill in the catalog items and make sure that the only two
+            # remaining catalog items are the catalog items associated with location
+            # 6902 since we previously filtered to just that location
+            cache = RISECache(cache_type)
+            expanded = LocationHelper.fill_catalogItems(res, cache)
+
+            assert expanded["data"][0]["relationships"]["catalogItems"] is not None
+
+            assert (
+                len(expanded["data"][0]["relationships"]["catalogItems"]["data"]) == 2
+            )
+            assert (
+                expanded["data"][0]["relationships"]["catalogItems"]["data"][0]["id"]
+                == "/rise/api/catalog-item/128632"
+            )
+            assert (
+                expanded["data"][0]["relationships"]["catalogItems"]["data"][1]["id"]
+                == "/rise/api/catalog-item/128633"
+            )
+
+    def test_cache_clears(self, cache_type):
+        cache = RISECache(cache_type)
+        cache.set(
+            "https://data.usbr.gov/rise/api/catalog-item/128562", {"data": "test"}
+        )
+        assert asyncio.run(
+            cache.get_or_fetch("https://data.usbr.gov/rise/api/catalog-item/128562")
+        ) == {"data": "test"}
+
+        cache.clear("https://data.usbr.gov/rise/api/catalog-item/128562")
+        time.sleep(1)
+        assert (
+            cache.contains("https://data.usbr.gov/rise/api/catalog-item/128562")
+            is False
+        )
+        with pytest.raises(KeyError):
+            cache.get("https://data.usbr.gov/rise/api/catalog-item/128562")
