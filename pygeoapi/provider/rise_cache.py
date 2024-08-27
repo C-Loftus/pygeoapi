@@ -10,6 +10,7 @@ from pygeoapi.provider.rise_api_types import CacheInterface, JsonPayload, Url
 import aiohttp
 from pygeoapi.provider.rise_edr_share import merge_pages
 import redis
+from aiohttp import client_exceptions
 from datetime import timedelta
 
 HEADERS = {"accept": "application/vnd.api+json"}
@@ -22,7 +23,7 @@ async def fetch_url(url: str) -> dict:
         async with session.get(url, headers=HEADERS) as response:
             try:
                 return await response.json()
-            except Exception as e:
+            except client_exceptions.ContentTypeError as e:
                 LOGGER.error(f"{e}: Text: {await response.text()}, URL: {url}")
                 raise e
 
@@ -93,7 +94,7 @@ class RedisCache(CacheInterface):
         data = self.db.get(url)
         if data is None:
             raise KeyError(f"{url} not found in cache")
-        return json.loads(data) # type: ignore
+        return json.loads(data)  # type: ignore
 
 
 class RISECache(CacheInterface):

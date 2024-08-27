@@ -29,9 +29,11 @@ class RiseProvider(BaseProvider):
         try:
             self.cache = RISECache(provider_def["cache"])
         except KeyError:
-            LOGGER.error("You must specify a cache implementation in the config.yml for RISE")
-            raise 
-        
+            LOGGER.error(
+                "You must specify a cache implementation in the config.yml for RISE"
+            )
+            raise
+
         super().__init__(provider_def)
 
     def items(
@@ -44,6 +46,13 @@ class RiseProvider(BaseProvider):
         **kwargs,
     ):
         if itemId:
+            try:
+                str(int(itemId))
+            except ValueError:
+                raise ProviderQueryError(
+                    f"ID should be able to be converted to int but got: {itemId}"
+                )
+
             # Instead of merging all location pages, just
             # fetch the location associated with the ID
             single_endpoint_response = requests.get(

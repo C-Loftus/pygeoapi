@@ -147,14 +147,15 @@ class LocationHelper:
         allLocations: LocationResponse,
         cache: RISECache,
     ) -> dict[locationId, paramIdList]:
-        locationsToCatalogItems = LocationHelper.get_catalogItemURLs(allLocations)
+        locationsToCatalogItemURLs = LocationHelper.get_catalogItemURLs(allLocations)
 
         locationToParams: dict[str, list[str | None]] = {}
 
-        for location, catalogItems in locationsToCatalogItems.items():
-            urlItemMapper: dict[str, dict] = asyncio.run(
-                cache.get_or_fetch_group(catalogItems)
-            )  # type: ignore since the function doesn't know it is specifically for a catalogitem, but we know it is
+        async def get_all_params_for_location(location, catalogItems):
+            # Map a location to a list of catalog item responses
+            urlItemMapper: dict[str, dict] = await cache.get_or_fetch_group(
+                catalogItems
+            )
 
             try:
                 allParams = []
@@ -170,12 +171,23 @@ class LocationHelper:
                     json.dump(urlItemMapper, f)
                 raise ProviderQueryError("Could not get parameters")
 
+            # drop all empty params
             allParams = list(filter(lambda x: x is not None, allParams))
+            return location, allParams
 
-            locationToParams[location] = allParams
+        async def gather_parameters():
+            """Asynchronously fetch all parameters for all locations"""
+            tasks = [
+                get_all_params_for_location(location, catalogItemURLs)
+                for location, catalogItemURLs in locationsToCatalogItemURLs.items()
+            ]
+            results = await asyncio.gather(*tasks)
+            return {location: params for location, params in results}
+
+        locationToParams = asyncio.run(gather_parameters())
 
         # should have the same number of locations in each
-        assert len(locationToParams) == len(locationsToCatalogItems)
+        assert len(locationToParams) == len(locationsToCatalogItemURLs)
         return locationToParams
 
     @staticmethod
@@ -343,7 +355,7 @@ class LocationHelper:
 
             if geometry:
                 result_geo = shapely.geometry.shape(
-                    v["attributes"]["locationCoordinates"]
+                    v["attributes"]["locationCoordinates"]  # type: ignore
                 )
 
                 if not geometry.contains(result_geo):
@@ -445,7 +457,9 @@ class LocationHelper:
     def fill_catalogItems(
         response: LocationResponse, cache: RISECache, add_results: bool = False
     ):
-        """Given a location, fill in the catalog items within it for it can be more easily used for complex joins"""
+        """Given a location that contains just catalog item ids, fill in the catalog items with the full
+        endpoint response for the given catalog item so it can be more easily used for complex joins
+        """
 
         new = deepcopy(response)
 
@@ -454,7 +468,7 @@ class LocationHelper:
             LocationHelper.get_catalogItemURLs(new)
         )
         catalogItemUrls = flatten_values(locationToCatalogItemUrls)
-        
+
         catalogItemUrlToResponse = asyncio.run(
             cache.get_or_fetch_group(catalogItemUrls)
         )

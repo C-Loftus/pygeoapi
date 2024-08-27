@@ -1,5 +1,6 @@
 from datetime import timedelta
 import json
+import re
 
 import redis
 
@@ -305,6 +306,15 @@ class TestFnsWithCaching:
             # Test it contains a random catalog item from the location
             assert cache.contains("https://data.usbr.gov/rise/api/catalog-item/128573")
             assert "18" in flatten_values(locationsToParams)  # type: ignore
+
+    # def test_get_parameters_full_catalog(self, cache_type):
+    #     """Stress test for get_parameters"""
+    #     response = requests.get(
+    #         "https://data.usbr.gov/rise/api/location",
+    #         headers={"accept": "application/vnd.api+json"},
+    #     ).json()
+    #     cache = RISECache(cache_type)
+    #     locationsToParams = LocationHelper.get_parameters(response, cache)
 
     def test_fetch_all_pages(self, cache_type):
         url = "https://data.usbr.gov/rise/api/location"
