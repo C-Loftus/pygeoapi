@@ -148,7 +148,7 @@ def get_collection_map(api: API, request: APIRequest,
         LOGGER.debug("Reprojecting coordinates")
         LOGGER.debug(f"Output CRS: {CRS_CODES[crs]}")
 
-        src_crs = pyproj.CRS.from_string("epsg:4326")
+        src_crs = pyproj.CRS.from_string(CRS_CODES[bbox_crs])
         dest_crs = pyproj.CRS.from_string(CRS_CODES[crs])
 
         transformer = pyproj.Transformer.from_crs(src_crs, dest_crs, always_xy=True)
