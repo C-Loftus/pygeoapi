@@ -43,6 +43,8 @@ from http import HTTPStatus
 import logging
 from typing import Tuple
 
+import pyproj
+
 from pygeoapi.openapi import get_oas_30_parameters
 from pygeoapi.plugin import load_plugin
 from pygeoapi.provider.base import ProviderGenericError
@@ -59,6 +61,11 @@ CONFORMANCE_CLASSES = [
     'http://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/core'
 ]
 
+
+CRS_CODES = {
+    4326: "EPSG:4326",
+    "http://www.opengis.net/def/crs/EPSG/0/3857": "EPSG:3857",
+}
 
 def get_collection_map(api: API, request: APIRequest,
                        dataset, style=None) -> Tuple[dict, int, str]:
@@ -102,7 +109,9 @@ def get_collection_map(api: API, request: APIRequest,
 
     query_args['format_'] = request.params.get('f', 'png')
     query_args['style'] = style
-    query_args['crs'] = request.params.get('bbox-crs', 4326)
+    crs = request.params.get('crs', 4326)
+    query_args['crs'] = crs
+    bbox_crs = request.params.get('bbox-crs', 4326)
     query_args['transparent'] = request.params.get('transparent', True)
 
     try:
@@ -132,6 +141,21 @@ def get_collection_map(api: API, request: APIRequest,
                 exception, api.pretty_print)
     except AttributeError:
         bbox = api.config['resources'][dataset]['extents']['spatial']['bbox']  # noqa
+    if bbox_crs in [4326, "CRS;84"]:
+        LOGGER.debug("Swapping 4326 axis order to WMS 1.3 mode (yx)")
+        bbox = [bbox[1], bbox[0], bbox[3], bbox[2]]
+    else:
+        LOGGER.debug("Reprojecting coordinates")
+        LOGGER.debug(f"Output CRS: {CRS_CODES[crs]}")
+
+        src_crs = pyproj.CRS.from_string("epsg:4326")
+        dest_crs = pyproj.CRS.from_string(CRS_CODES[crs])
+
+        transformer = pyproj.Transformer.from_crs(src_crs, dest_crs, always_xy=True)
+
+        minx, miny = transformer.transform(bbox[0], bbox[1])
+        maxx, maxy = transformer.transform(bbox[2], bbox[3])
+        bbox = [minx, miny, maxx, maxy]
     try:
         query_args['bbox'] = [float(c) for c in bbox]
     except ValueError:

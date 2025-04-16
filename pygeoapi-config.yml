@@ -58,7 +58,7 @@ server:
     admin: false # enable admin api
 
 logging:
-    level: ERROR
+    level: DEBUG
     #logfile: /tmp/pygeoapi.log
 
 metadata:
