@@ -104,7 +104,7 @@ def get_collection_map(api: API, request: APIRequest,
 
     query_args['format_'] = request.params.get('f', 'png')
     query_args['style'] = style
-    crs = request.params.get("crs", "http://www.opengis.net/def/crs/EPSG/0/4326")
+    crs = collection_def.get("crs", "http://www.opengis.net/def/crs/EPSG/0/4326")
     query_args['crs'] = crs
     bbox_crs = request.params.get(
         "bbox-crs", "http://www.opengis.net/def/crs/EPSG/0/4326"

@@ -91,6 +91,10 @@ class WMSFacadeProvider(BaseProvider):
             self._transparent = 'FALSE'
         crs_param = 'crs' if version == '1.3.0' else 'srs'
 
+        # if CRS_CODES[crs] != "EPSG:4326":
+        #     LOGGER.debug("Swapping 4326 axis order to WMS 1.3 mode (yx)")
+        #     bbox = [bbox[1], bbox[0], bbox[3], bbox[2]]
+
         params = {
             'version': version,
             'service': 'WMS',
