@@ -50,3 +50,39 @@ def test_get_collection_map(config, api_):
     assert code == HTTPStatus.OK
     assert isinstance(response, bytes)
     assert response[1:4] == b'PNG'
+
+def test_map_crs_transform(config, api_):
+ 
+    # http://localhost:5000/collections/mapserver_world_map/map?f=png&bbox=-88.374023,24.826625,-78.112793,31.015279
+    params = {
+        'bbox': '-88.374023,24.826625,-78.112793,31.015279',
+    }
+    req = mock_api_request(params)
+    _, code, responseDefault = get_collection_map(
+        api_, req, 'mapserver_world_map')
+    assert code == HTTPStatus.OK    
+
+    params = {
+        'bbox': '-88.374023,24.826625,-78.112793,31.015279',
+        'bbox-crs': 'http://www.opengis.net/def/crs/EPSG/0/3857'
+    }
+    # http://localhost:5000/collections/mapserver_world_map/map?f=png&bbox=-9837751.2884,2854464.3843,-8695476.3377,3634733.5690&bbox-crs=http://www.opengis.net/def/crs/EPSG/0/3857
+    req = mock_api_request(params)
+    _, code, responseProjectedWithSameCoords = get_collection_map(
+        api_, req, 'mapserver_world_map')
+    assert code == HTTPStatus.OK
+
+    assert responseProjectedWithSameCoords != responseDefault 
+
+    # http://localhost:5000/collections/mapserver_world_map/map?f=png&bbox=-9837751.2884,2854464.3843,-8695476.3377,3634733.5690&bbox-crs=http://www.opengis.net/def/crs/EPSG/0/3857
+    params = {
+        'bbox': '-9837751.2884,2854464.3843,-8695476.3377,3634733.5690',
+        'bbox-crs': 'http://www.opengis.net/def/crs/EPSG/0/3857'
+    }
+    req = mock_api_request(params)
+    _, code, responseProjectedCorrectly = get_collection_map(
+        api_, req, 'mapserver_world_map')
+    assert code == HTTPStatus.OK
+
+
+    assert responseDefault == responseProjectedCorrectly
