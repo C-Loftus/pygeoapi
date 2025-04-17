@@ -50,7 +50,7 @@ from pygeoapi.plugin import load_plugin
 from pygeoapi.provider.base import ProviderGenericError
 from pygeoapi.util import (
     get_provider_by_type, to_json, filter_providers_by_type,
-    filter_dict_by_key_value
+    filter_dict_by_key_value, transform_bbox
 )
 
 from . import APIRequest, API, validate_datetime
@@ -61,10 +61,10 @@ CONFORMANCE_CLASSES = [
     'http://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/core'
 ]
 
-
 CRS_CODES = {
     4326: "EPSG:4326",
     "http://www.opengis.net/def/crs/EPSG/0/3857": "EPSG:3857",
+    "http://www.opengis.net/def/crs/EPSG/0/4326": "EPSG:4326",
 }
 
 def get_collection_map(api: API, request: APIRequest,
@@ -109,9 +109,11 @@ def get_collection_map(api: API, request: APIRequest,
 
     query_args['format_'] = request.params.get('f', 'png')
     query_args['style'] = style
-    crs = request.params.get('crs', 4326)
+    crs = request.params.get("crs", "http://www.opengis.net/def/crs/EPSG/0/4326")
     query_args['crs'] = crs
-    bbox_crs = request.params.get('bbox-crs', 4326)
+    bbox_crs = request.params.get(
+        "bbox-crs", "http://www.opengis.net/def/crs/EPSG/0/4326"
+    )
     query_args['transparent'] = request.params.get('transparent', True)
 
     try:
@@ -146,16 +148,10 @@ def get_collection_map(api: API, request: APIRequest,
         bbox = [bbox[1], bbox[0], bbox[3], bbox[2]]
     else:
         LOGGER.debug("Reprojecting coordinates")
-        LOGGER.debug(f"Output CRS: {CRS_CODES[crs]}")
+        LOGGER.debug(f"Output CRS: {crs}")
+        bbox = [str(c) for c in bbox]
+        bbox = transform_bbox(bbox, bbox_crs, crs)
 
-        src_crs = pyproj.CRS.from_string(CRS_CODES[bbox_crs])
-        dest_crs = pyproj.CRS.from_string(CRS_CODES[crs])
-
-        transformer = pyproj.Transformer.from_crs(src_crs, dest_crs, always_xy=True)
-
-        minx, miny = transformer.transform(bbox[0], bbox[1])
-        maxx, maxy = transformer.transform(bbox[2], bbox[3])
-        bbox = [minx, miny, maxx, maxy]
     try:
         query_args['bbox'] = [float(c) for c in bbox]
     except ValueError:
