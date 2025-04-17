@@ -33,13 +33,18 @@ from urllib.parse import urlencode
 import pyproj
 import requests
 
-from pygeoapi.api.maps import CRS_CODES
 from pygeoapi.provider.base import BaseProvider, ProviderQueryError
 
 LOGGER = logging.getLogger(__name__)
 
 OUTPUT_FORMATS = {
     'png': 'image/png'
+}
+
+CRS_CODES = {
+    4326: "EPSG:4326",
+    "http://www.opengis.net/def/crs/EPSG/0/3857": "EPSG:3857",
+    "http://www.opengis.net/def/crs/EPSG/0/4326": "EPSG:4326",
 }
 
 

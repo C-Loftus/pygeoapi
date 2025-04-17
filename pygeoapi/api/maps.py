@@ -61,11 +61,6 @@ CONFORMANCE_CLASSES = [
     'http://www.opengis.net/spec/ogcapi-maps-1/1.0/conf/core'
 ]
 
-CRS_CODES = {
-    4326: "EPSG:4326",
-    "http://www.opengis.net/def/crs/EPSG/0/3857": "EPSG:3857",
-    "http://www.opengis.net/def/crs/EPSG/0/4326": "EPSG:4326",
-}
 
 def get_collection_map(api: API, request: APIRequest,
                        dataset, style=None) -> Tuple[dict, int, str]:
@@ -143,14 +138,11 @@ def get_collection_map(api: API, request: APIRequest,
                 exception, api.pretty_print)
     except AttributeError:
         bbox = api.config['resources'][dataset]['extents']['spatial']['bbox']  # noqa
-    if bbox_crs in [4326, "CRS;84"]:
-        LOGGER.debug("Swapping 4326 axis order to WMS 1.3 mode (yx)")
-        bbox = [bbox[1], bbox[0], bbox[3], bbox[2]]
-    else:
-        LOGGER.debug("Reprojecting coordinates")
-        LOGGER.debug(f"Output CRS: {crs}")
-        bbox = [str(c) for c in bbox]
-        bbox = transform_bbox(bbox, bbox_crs, crs)
+
+    LOGGER.debug("Reprojecting coordinates")
+    LOGGER.debug(f"Output bbox CRS: {crs}")
+    bbox = [str(c) for c in bbox]
+    bbox = transform_bbox(bbox, bbox_crs, crs)
 
     try:
         query_args['bbox'] = [float(c) for c in bbox]
