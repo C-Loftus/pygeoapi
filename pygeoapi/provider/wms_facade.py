@@ -65,7 +65,7 @@ class WMSFacadeProvider(BaseProvider):
         LOGGER.debug(f'pyproj version: {pyproj.__version__}')
 
     def query(self, style=None, bbox=[-180, -90, 180, 90], width=500,
-              height=300, crs=4326, datetime_=None, transparent=True,
+              height=300, crs=4326, datetime_=None, transparent=True, bbox_crs=4326,
               format_='png'):
         """
         Generate map
@@ -87,13 +87,12 @@ class WMSFacadeProvider(BaseProvider):
 
         version = self.options.get('version', '1.3.0')
 
+        if version == '1.3.0' and CRS_CODES[bbox_crs] == 'EPSG:4326':
+            bbox = [bbox[1], bbox[0], bbox[3], bbox[2]]
+
         if not transparent:
             self._transparent = 'FALSE'
         crs_param = 'crs' if version == '1.3.0' else 'srs'
-
-        # if CRS_CODES[crs] != "EPSG:4326":
-        #     LOGGER.debug("Swapping 4326 axis order to WMS 1.3 mode (yx)")
-        #     bbox = [bbox[1], bbox[0], bbox[3], bbox[2]]
 
         params = {
             'version': version,

@@ -106,7 +106,7 @@ def get_collection_map(api: API, request: APIRequest,
     query_args['style'] = style
     crs = collection_def.get("crs", "http://www.opengis.net/def/crs/EPSG/0/4326")
     query_args['crs'] = crs
-    bbox_crs = request.params.get(
+    query_args['bbox_crs'] = request.params.get(
         "bbox-crs", "http://www.opengis.net/def/crs/EPSG/0/4326"
     )
     query_args['transparent'] = request.params.get('transparent', True)
@@ -142,7 +142,7 @@ def get_collection_map(api: API, request: APIRequest,
     LOGGER.debug("Reprojecting coordinates")
     LOGGER.debug(f"Output bbox CRS: {crs}")
     bbox = [str(c) for c in bbox]
-    bbox = transform_bbox(bbox, bbox_crs, crs)
+    bbox = transform_bbox(bbox, query_args['bbox_crs'], crs)
 
     try:
         query_args['bbox'] = [float(c) for c in bbox]
