@@ -42,9 +42,6 @@ from copy import deepcopy
 from http import HTTPStatus
 import logging
 from typing import Tuple
-
-import pyproj
-
 from pygeoapi.openapi import get_oas_30_parameters
 from pygeoapi.plugin import load_plugin
 from pygeoapi.provider.base import ProviderGenericError
@@ -104,10 +101,10 @@ def get_collection_map(api: API, request: APIRequest,
 
     query_args['format_'] = request.params.get('f', 'png')
     query_args['style'] = style
-    crs = collection_def.get("crs", "http://www.opengis.net/def/crs/EPSG/0/4326")
-    query_args['crs'] = crs
+    epsg4326 = 'http://www.opengis.net/def/crs/EPSG/0/4326'
+    query_args['crs'] = collection_def.get('crs', epsg4326)
     query_args['bbox_crs'] = request.params.get(
-        "bbox-crs", "http://www.opengis.net/def/crs/EPSG/0/4326"
+        'bbox-crs', epsg4326
     )
     query_args['transparent'] = request.params.get('transparent', True)
 
@@ -139,10 +136,9 @@ def get_collection_map(api: API, request: APIRequest,
     except AttributeError:
         bbox = api.config['resources'][dataset]['extents']['spatial']['bbox']  # noqa
 
-    LOGGER.debug("Reprojecting coordinates")
-    LOGGER.debug(f"Output bbox CRS: {crs}")
-    bbox = [str(c) for c in bbox]
-    bbox = transform_bbox(bbox, query_args['bbox_crs'], crs)
+    LOGGER.debug('Reprojecting coordinates')
+    LOGGER.debug(f'Output bbox CRS: {query_args['crs']}')
+    bbox = transform_bbox(bbox, query_args['bbox_crs'], query_args['crs'])
 
     try:
         query_args['bbox'] = [float(c) for c in bbox]

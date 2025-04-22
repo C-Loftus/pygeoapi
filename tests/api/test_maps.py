@@ -53,40 +53,39 @@ def test_get_collection_map(config, api_):
 
 def test_map_crs_transform(config, api_):
     
-    # Florida
-    # http://localhost:5000/collections/mapserver_world_map/map?f=png&bbox=-88.374023,24.826625,-78.112793,31.015279
+    # Florida in EPSG:4326
     params = {
         'bbox': '-88.374023,24.826625,-78.112793,31.015279',
-        # 4326
+        # crs is 4326 by implicit since it is the default
     }
     req = mock_api_request(params)
-    _, code, responseDefault = get_collection_map(
+    _, code, floridaIn4326 = get_collection_map(
         api_, req, 'mapserver_world_map')
-    assert code == HTTPStatus.OK    
+    assert code == HTTPStatus.OK
 
+    # Area that isn't florida in the ocean; used to make sure 
+    # the same coords with different crs are not the same
     params = {
         "bbox": "-88.374023,24.826625,-78.112793,31.015279",
         "bbox-crs": "http://www.opengis.net/def/crs/EPSG/0/3857",
     }
-    # Not florida
-    # http://localhost:5000/collections/mapserver_world_map/map?f=png&bbox=-88.374023,24.826625,-78.112793,31.015279&bbox-crs=http://www.opengis.net/def/crs/EPSG/0/3857
+
     req = mock_api_request(params)
-    _, code, responseProjectedWithSameCoords = get_collection_map(
+    _, code, florida4326InWrongCRS = get_collection_map(
         api_, req, 'mapserver_world_map')
     assert code == HTTPStatus.OK
 
-    assert responseProjectedWithSameCoords != responseDefault 
+    assert florida4326InWrongCRS != floridaIn4326 
 
-    # Florida
-    # http://localhost:5000/collections/mapserver_world_map/map?f=png&bbox=-9837751.2884,2854464.3843,-8695476.3377,3634733.5690&bbox-crs=http://www.opengis.net/def/crs/EPSG/0/3857
+    # Florida again, but this time in EPSG:3857
     params = {
         'bbox': '-9837751.2884,2854464.3843,-8695476.3377,3634733.5690',
         'bbox-crs': 'http://www.opengis.net/def/crs/EPSG/0/3857'
     }
     req = mock_api_request(params)
-    _, code, responseProjectedCorrectly = get_collection_map(
+    _, code, floridaProjectedIn3857 = get_collection_map(
         api_, req, 'mapserver_world_map')
     assert code == HTTPStatus.OK
 
 
-    assert responseDefault == responseProjectedCorrectly
+    assert floridaIn4326 == floridaProjectedIn3857
