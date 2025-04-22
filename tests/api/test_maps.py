@@ -66,8 +66,8 @@ def test_map_crs_transform(config, api_):
     # Area that isn't florida in the ocean; used to make sure 
     # the same coords with different crs are not the same
     params = {
-        "bbox": "-88.374023,24.826625,-78.112793,31.015279",
-        "bbox-crs": "http://www.opengis.net/def/crs/EPSG/0/3857",
+        'bbox': '-88.374023,24.826625,-78.112793,31.015279',
+        'bbox-crs': 'http://www.opengis.net/def/crs/EPSG/0/3857',
     }
 
     req = mock_api_request(params)
