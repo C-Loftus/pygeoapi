@@ -7,7 +7,7 @@ class MySQLProvider(GenericSQLProvider):
     """
     A provider for a MySQL database
 
-    Your mysql db should have the following environment variables 
+    Your mysql db should have the following environment variables
     set so that the connection can be established:
         MYSQL_ROOT_PASSWORD
         MYSQL_USER
