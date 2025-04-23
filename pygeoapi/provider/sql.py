@@ -51,7 +51,9 @@ from pygeofilter.backends.sqlalchemy.evaluate import to_filter
 import pyproj
 import shapely
 from sqlalchemy.sql import func
-from sqlalchemy import create_engine, MetaData, PrimaryKeyConstraint, asc, desc, delete
+from sqlalchemy import (create_engine,
+                        MetaData, PrimaryKeyConstraint,
+                        asc, desc, delete)
 from sqlalchemy.engine import URL
 from sqlalchemy.exc import (
     ConstraintColumnNotFoundError,
@@ -81,7 +83,7 @@ class GenericSQLProvider(BaseProvider):
     from to create specific providers for different databases
     """
 
-    def __init__(self, provider_def: dict, driver_name: str, 
+    def __init__(self, provider_def: dict, driver_name: str,
                  extra_conn_args: Optional[dict]):
         """
         GenericSQLProvider Class constructor
@@ -91,7 +93,7 @@ class GenericSQLProvider(BaseProvider):
                              data contains the connection information
                              for class DatabaseCursor
         :param driver_name: database driver name
-        :param extra_conn_args: additional connection arguments to pass for 
+        :param extra_conn_args: additional connection arguments to pass for
                                 the query
 
         :returns: pygeoapi.provider.base.GenericSQLProvider
@@ -282,7 +284,8 @@ class GenericSQLProvider(BaseProvider):
 
                 self._fields[str(column.name)] = {
                     "type": _column_type_to_json_schema_type(column.type),
-                    "format": _column_format_to_json_schema_format(column.type),
+                    "format":
+                    _column_format_to_json_schema_format(column.type),
                 }
 
         return self._fields
@@ -376,7 +379,7 @@ class GenericSQLProvider(BaseProvider):
         :returns: `bool` of update result
         """
 
-        identifier, json_data = self._load_and_prepare_item(item, raise_if_exists=False)
+        identifier, json_data = self._load_and_prepare_item(item, raise_if_exists=False) # noqa
 
         new_instance = self._feature_to_sqlalchemy(json_data, identifier)
         with Session(self._engine) as session:
@@ -502,29 +505,33 @@ class GenericSQLProvider(BaseProvider):
 
     def _get_bbox_filter(self, bbox: list[float], driver: str):
         """
-        Construct the bounding box filter function that 
-        will be used in the query; this is dependent on the 
-        underlying db driver    
+        Construct the bounding box filter function that
+        will be used in the query; this is dependent on the
+        underlying db driver
         """
         if not bbox:
-            return True # Let everything through if no bbox
+            return True  # Let everything through if no bbox
 
-        # If we are using mysql we can't use ST_MakeEnvelope since it is postgis specific
-        # and thus we have to use MBRContains with a WKT POLYGON
+        # If we are using mysql we can't use ST_MakeEnvelope since it is
+        # postgis specific and thus we have to use MBRContains with a WKT
+        # POLYGON
         if "mysql" in driver:
             # Create WKT POLYGON from bbox: (minx, miny, maxx, maxy)
             minx, miny, maxx, maxy = bbox
             polygon_wkt = f'POLYGON(({minx} {miny}, {maxx} {miny}, {maxx} {maxy}, {minx} {maxy}, {minx} {miny}))' # noqa
             geom_column = getattr(self.table_model, self.geom)
             # Use MySQL MBRContains for index-accelerated bounding box checks
-            bbox_filter = func.MBRContains(func.ST_GeomFromText(polygon_wkt), geom_column)
+            bbox_filter = func.MBRContains(func.ST_GeomFromText(polygon_wkt),
+                                           geom_column)
         elif "postgres" in driver:
             # Assuming postgis, we can use ST_MakeEnvelope
             envelope = ST_MakeEnvelope(*bbox)
             geom_column = getattr(self.table_model, self.geom)
             bbox_filter = geom_column.intersects(envelope)
         else:
-            raise ValueError(f"Driver '{driver}' is ambiguous or not supported")
+            raise ValueError(
+                f"Driver '{driver}' is ambiguous or not supported"
+            )
 
         return bbox_filter
 
@@ -611,7 +618,7 @@ def get_engine(
     conn_args = {
         **connection_options,
     }
-    engine = create_engine(conn_str, connect_args=conn_args, pool_pre_ping=True)
+    engine = create_engine(conn_str, connect_args=conn_args, pool_pre_ping=True) # noqa
     return engine
 
 
@@ -628,7 +635,10 @@ def get_table_model(
     # Look for table in the first schema in the search path
     schema = db_search_path[0]
     try:
-        metadata.reflect(bind=engine, schema=schema, only=[table_name], views=True)
+        metadata.reflect(bind=engine,
+                         schema=schema,
+                         only=[table_name],
+                         views=True)
     except OperationalError:
         raise ProviderConnectionError(
             f"Could not connect to {repr(engine.url)} (password hidden)."
