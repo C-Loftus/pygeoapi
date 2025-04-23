@@ -92,6 +92,7 @@ class PostgreSQLManager(BaseManager):
             if isinstance(self.connection, str):
                 _url = make_url(self.connection)
                 self._engine = get_engine(
+                    "postgresql+psycopg2",
                     _url.host,
                     _url.port,
                     _url.database,
