@@ -59,7 +59,7 @@ jobs:
       with:
         host port: 3306 
         mysql version: '8.0' 
-        mysql database: 'test_geo_app'
+        mysql database: test_geo_app
         mysql root password: mysql # This is a dummy password here; not actually used in prod
         mysql user: pygeoapi 
         mysql password: mysql 
