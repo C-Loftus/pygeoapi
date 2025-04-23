@@ -640,7 +640,6 @@ def get_table_model(
                          only=[table_name],
                          views=True)
     except OperationalError:
-        assert "**" not in repr(engine.url), f"{repr(engine.url)}, {engine.url}"
         raise ProviderConnectionError(
             f"Could not connect to {repr(engine.url)} (password hidden)."
         )
