@@ -42,7 +42,7 @@ from datetime import datetime
 from decimal import Decimal
 import functools
 import logging
-from typing import Mapping
+from typing import Optional
 
 from geoalchemy2 import Geometry  # noqa - this isn't used explicitly but is needed to process Geometry columns
 from geoalchemy2.functions import ST_MakeEnvelope
@@ -80,22 +80,18 @@ class GenericSQLProvider(BaseProvider):
     cursor (using support class DatabaseCursor)
     """
 
-    # These two variables are defined in the parent class
-    extra_conn_args: dict
-    driver_name: str
-
-    def __init__(self, provider_def):
+    def __init__(self, provider_def: dict, driver_name: str, extra_conn_args: Optional[dict]):
         """
-        PostgreSQLProvider Class constructor
+        GenericSQLProvider Class constructor
 
         :param provider_def: provider definitions from yml pygeoapi-config.
                              data,id_field, name set in parent class
                              data contains the connection information
                              for class DatabaseCursor
 
-        :returns: pygeoapi.provider.base.PostgreSQLProvider
+        :returns: pygeoapi.provider.base.GenericSQLProvider
         """
-        LOGGER.debug("Initialising PostgreSQL provider.")
+        LOGGER.debug("Initialising GenericSQL provider.")
         super().__init__(provider_def)
 
         self.table = provider_def["table"]
@@ -119,15 +115,15 @@ class GenericSQLProvider(BaseProvider):
         if provider_def.get("options"):
             options = provider_def["options"]
         self._store_db_parameters(provider_def["data"], options)
+        assert extra_conn_args
         self._engine = get_engine(
-            self.driver_name,
+            driver_name,
             self.db_host,
             self.db_port,
             self.db_name,
             self.db_user,
             self._db_password,
-            tuple(self.extra_conn_args.items()),
-            **(self.db_options or {}),
+            **{**(self.db_options or {}), **extra_conn_args},
         )
         self.table_model = get_table_model(
             self.table, self.id_field, self.db_search_path, self._engine
@@ -153,7 +149,7 @@ class GenericSQLProvider(BaseProvider):
         **kwargs,
     ):
         """
-        Query Postgis for all the content.
+        Query sql database for all the content.
         e,g: http://localhost:5000/collections/hotosm_bdi_waterways/items?
         limit=1&resulttype=results
 
@@ -578,7 +574,6 @@ def get_engine(
     database: str,
     user: str,
     password: str,
-    extra_connect_args: Mapping[str, str],
     **connection_options,
 ):
     """Create SQL Alchemy engine."""
@@ -592,8 +587,7 @@ def get_engine(
     )
     conn_args = {
         **connection_options,
-    }.update(extra_connect_args
-    )
+    }
     engine = create_engine(conn_str, connect_args=conn_args, pool_pre_ping=True)
     return engine
 
