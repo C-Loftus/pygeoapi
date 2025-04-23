@@ -53,6 +53,16 @@ jobs:
       with:
         postgresql password: ${{ secrets.DatabasePassword || 'postgres' }}
         postgresql db: 'test'
+
+    - uses: mirromutth/mysql-action@v1.1
+      with:
+        host port: 3306 
+        mysql version: '8.0' 
+        mysql database: 'test_geo_app'
+        mysql root password: mysql # This is a dummy password here; not actually used in prod
+        mysql user: pygeoapi 
+        mysql password: mysql 
+        
     - name: Install and run Elasticsearch 📦
       uses: getong/elasticsearch-action@v1.2
       with:
@@ -142,6 +152,7 @@ jobs:
         pytest tests/test_oracle_provider.py
         pytest tests/test_parquet_provider.py
         pytest tests/test_postgresql_provider.py
+        pytest tests/test_mysql_provider.py
         pytest tests/test_rasterio_provider.py
         pytest tests/test_sensorthings_edr_provider.py 
         pytest tests/test_sensorthings_provider.py

@@ -50,6 +50,7 @@ from geoalchemy2.shape import to_shape, from_shape
 from pygeofilter.backends.sqlalchemy.evaluate import to_filter
 import pyproj
 import shapely
+from sqlalchemy.sql import func
 from sqlalchemy import create_engine, MetaData, PrimaryKeyConstraint, asc, desc, delete
 from sqlalchemy.engine import URL
 from sqlalchemy.exc import (
@@ -75,12 +76,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 class GenericSQLProvider(BaseProvider):
-    """Generic provider for Postgresql based on psycopg2
-    using sync approach and server side
-    cursor (using support class DatabaseCursor)
+    """
+    Generic provider for sql databases it can be inherited
+    from to create specific providers for different databases
     """
 
-    def __init__(self, provider_def: dict, driver_name: str, extra_conn_args: Optional[dict]):
+    def __init__(self, provider_def: dict, driver_name: str, 
+                 extra_conn_args: Optional[dict]):
         """
         GenericSQLProvider Class constructor
 
@@ -88,6 +90,9 @@ class GenericSQLProvider(BaseProvider):
                              data,id_field, name set in parent class
                              data contains the connection information
                              for class DatabaseCursor
+        :param driver_name: database driver name
+        :param extra_conn_args: additional connection arguments to pass for 
+                                the query
 
         :returns: pygeoapi.provider.base.GenericSQLProvider
         """
@@ -97,6 +102,7 @@ class GenericSQLProvider(BaseProvider):
         self.table = provider_def["table"]
         self.id_field = provider_def["id_field"]
         self.geom = provider_def.get("geom_field", "geom")
+        self.driver_name = driver_name
 
         LOGGER.debug(f"Name: {self.name}")
         LOGGER.debug(f"Table: {self.table}")
@@ -172,7 +178,7 @@ class GenericSQLProvider(BaseProvider):
         LOGGER.debug("Preparing filters")
         property_filters = self._get_property_filters(properties)
         cql_filters = self._get_cql_filters(filterq)
-        bbox_filter = self._get_bbox_filter(bbox)
+        bbox_filter = self._get_bbox_filter(bbox, self.driver_name)
         time_filter = self._get_datetime_filter(datetime_)
         order_by_clauses = self._get_order_by_clauses(sortby, self.table_model)
         selected_properties = self._select_properties_clause(
@@ -494,14 +500,31 @@ class GenericSQLProvider(BaseProvider):
 
         return property_filters
 
-    def _get_bbox_filter(self, bbox):
+    def _get_bbox_filter(self, bbox: list[float], driver: str):
+        """
+        Construct the bounding box filter function that 
+        will be used in the query; this is dependent on the 
+        underlying db driver    
+        """
         if not bbox:
-            return True  # Let everything through
+            return True # Let everything through if no bbox
 
-        # Convert bbx to SQL Alchemy clauses
-        envelope = ST_MakeEnvelope(*bbox)
-        geom_column = getattr(self.table_model, self.geom)
-        bbox_filter = geom_column.intersects(envelope)
+        # If we are using mysql we can't use ST_MakeEnvelope since it is postgis specific
+        # and thus we have to use MBRContains with a WKT POLYGON
+        if "mysql" in driver:
+            # Create WKT POLYGON from bbox: (minx, miny, maxx, maxy)
+            minx, miny, maxx, maxy = bbox
+            polygon_wkt = f'POLYGON(({minx} {miny}, {maxx} {miny}, {maxx} {maxy}, {minx} {maxy}, {minx} {miny}))' # noqa
+            geom_column = getattr(self.table_model, self.geom)
+            # Use MySQL MBRContains for index-accelerated bounding box checks
+            bbox_filter = func.MBRContains(func.ST_GeomFromText(polygon_wkt), geom_column)
+        elif "postgres" in driver:
+            # Assuming postgis, we can use ST_MakeEnvelope
+            envelope = ST_MakeEnvelope(*bbox)
+            geom_column = getattr(self.table_model, self.geom)
+            bbox_filter = geom_column.intersects(envelope)
+        else:
+            raise ValueError(f"Driver '{driver}' is ambiguous or not supported")
 
         return bbox_filter
 

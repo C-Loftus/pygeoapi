@@ -1,7 +1,9 @@
+-- A test database for the mysql provider; a simple geospatial app 
+
 -- Create the database
-DROP DATABASE IF EXISTS geo_app;
-CREATE DATABASE geo_app;
-USE geo_app;
+DROP DATABASE IF EXISTS test_geo_app;
+CREATE DATABASE test_geo_app;
+USE test_geo_app;
 
 -- Create the location table
 CREATE TABLE location (
