@@ -99,7 +99,8 @@ class PostgreSQLManager(BaseManager):
                     _url.username,
                     _url.password)
             else:
-                self._engine = get_engine(**self.connection)
+                self._engine = get_engine("postgresql+psycopg2",
+                                          **self.connection)
         except Exception as err:
             msg = 'Test connecting to DB failed'
             LOGGER.error(f'{msg}: {err}')
