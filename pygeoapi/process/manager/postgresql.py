@@ -56,7 +56,7 @@ from pygeoapi.process.base import (
     ProcessorGenericError
 )
 from pygeoapi.process.manager.base import BaseManager
-from pygeoapi.provider.postgresql import get_engine, get_table_model
+from pygeoapi.provider.sql import get_engine, get_table_model
 from pygeoapi.util import JobStatus
 
 

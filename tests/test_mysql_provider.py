@@ -67,6 +67,7 @@ services:
         - ./tests/data/mysql_data.sql:/docker-entrypoint-initdb.d/init.sql:ro
 """
 
+
 @pytest.fixture()
 def config():
     return {
@@ -142,11 +143,11 @@ def test_query_bbox(config):
     """Test query with a specified bounding box"""
     p = MySQLProvider(config)
     boxed_feature_collection = p.query(
-        bbox=[0,0,0,0]
+        bbox=[0, 0, 0, 0]
     )
     assert len(boxed_feature_collection['features']) == 0
 
-    nyc_bbox = [-73.9754,40.7729,-73.9554,40.7929]
+    nyc_bbox = [-73.9754, 40.7729, -73.9554, 40.7929]
 
     boxed_feature_collection = p.query(
         bbox=nyc_bbox
@@ -154,15 +155,17 @@ def test_query_bbox(config):
     assert len(boxed_feature_collection['features']) == 1
     assert boxed_feature_collection["features"][0]["id"] == 1
 
+
 def test_query_sortby(config):
     """Test query with sorting"""
     psp = MySQLProvider(config)
     up = psp.query(sortby=[{'property': 'locationName', 'order': '+'}])
-    firstItem =  up['features'][0]['properties']['locationName']
+    firstItem = up['features'][0]['properties']['locationName']
     assert firstItem == 'Central Park'
-    secondItem =  up['features'][1]['properties']['locationName']
+    secondItem = up['features'][1]['properties']['locationName']
     assert secondItem == "Christ the Redeemer"
     assert firstItem < secondItem
+
 
 def test_query_skip_geometry(config):
     """Test query without geometry"""
@@ -170,6 +173,7 @@ def test_query_skip_geometry(config):
     result = provider.query(skip_geometry=True)
     feature = result['features'][0]
     assert feature['geometry'] is None
+
 
 def test_get_not_existing_item_raise_exception(config):
     """Testing query for a not existing object"""

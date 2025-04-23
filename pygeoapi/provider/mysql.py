@@ -21,4 +21,3 @@ class MySQLProvider(GenericSQLProvider):
             'charset': 'utf8mb4',
         }
         super().__init__(provider_def, driver_name, extra_conn_args)
-  
