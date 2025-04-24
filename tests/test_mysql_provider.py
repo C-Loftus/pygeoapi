@@ -43,7 +43,7 @@ import pytest
 from pygeoapi.provider.base import (
     ProviderItemNotFoundError,
 )
-from pygeoapi.provider.mysql import MySQLProvider
+from pygeoapi.provider.sql import MySQLProvider
 
 PASSWORD = os.environ.get('MYSQL_PASSWORD', 'mysql')
 

@@ -686,3 +686,50 @@ def _name_for_scalar_relationship(base, local_cls, referred_cls, constraint):
         )
         return newname
     return name
+
+
+class PostgreSQLProvider(GenericSQLProvider):
+    """
+    A provider for querying a PostgreSQL database
+    """
+    def __init__(self, provider_def: dict):
+        """
+        PostgreSQLProvider Class constructor
+
+        :param provider_def: provider definitions from yml pygeoapi-config.
+                             data,id_field, name set in parent class
+                             data contains the connection information
+                             for class DatabaseCursor
+        :returns: pygeoapi.provider.sql.PostgreSQLProvider
+        """
+
+        driver_name = 'postgresql+psycopg2'
+        extra_conn_args = {
+          'client_encoding': 'utf8',
+          'application_name': 'pygeoapi'
+        }
+        super().__init__(provider_def, driver_name, extra_conn_args)
+
+
+class MySQLProvider(GenericSQLProvider):
+
+    """
+    A provider for a MySQL database
+    """
+
+    def __init__(self, provider_def: dict):
+        """
+        MySQLProvider Class constructor
+
+        :param provider_def: provider definitions from yml pygeoapi-config.
+                             data,id_field, name set in parent class
+                             data contains the connection information
+                             for class DatabaseCursor
+        :returns: pygeoapi.provider.sql.MySQLProvider
+        """
+
+        driver_name = 'mysql+pymysql'
+        extra_conn_args = {
+            'charset': 'utf8mb4',
+        }
+        super().__init__(provider_def, driver_name, extra_conn_args)
