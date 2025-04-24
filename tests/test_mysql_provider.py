@@ -75,7 +75,7 @@ def config():
         'type': 'feature',
         'data': {'host': 'localhost',
                  'dbname': 'test_geo_app',
-                 'user': 'pygeoapi',
+                 'user': 'root',
                  'port': 3306,
                  'password': PASSWORD,
                  'search_path': ['test_geo_app']
