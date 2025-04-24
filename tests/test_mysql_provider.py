@@ -163,7 +163,7 @@ def test_query_sortby(config):
     firstItem = up['features'][0]['properties']['locationName']
     assert firstItem == 'Central Park'
     secondItem = up['features'][1]['properties']['locationName']
-    assert secondItem == "Christ the Redeemer"
+    assert secondItem == 'Christ the Redeemer'
     assert firstItem < secondItem
 
 
