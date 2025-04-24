@@ -104,10 +104,6 @@ metadata:
         role: pointOfContact
 
 resources:
-
-
-
-
     obs:
         type: collection
         title: Observations

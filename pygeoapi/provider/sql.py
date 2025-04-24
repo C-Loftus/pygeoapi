@@ -93,10 +93,10 @@ class GenericSQLProvider(BaseProvider):
                              data contains the connection information
                              for class DatabaseCursor
         :param driver_name: database driver name
-        :param extra_conn_args: additional connection arguments to pass for
-                                the query
+        :param extra_conn_args: additional custom connection arguments to
+                                pass for a query
 
-        :returns: pygeoapi.provider.base.GenericSQLProvider
+        :returns: pygeoapi.provider.GenericSQLProvider
         """
         LOGGER.debug("Initialising GenericSQL provider.")
         super().__init__(provider_def)
@@ -123,7 +123,6 @@ class GenericSQLProvider(BaseProvider):
         if provider_def.get("options"):
             options = provider_def["options"]
         self._store_db_parameters(provider_def["data"], options)
-        assert extra_conn_args
         self._engine = get_engine(
             driver_name,
             self.db_host,
@@ -131,7 +130,7 @@ class GenericSQLProvider(BaseProvider):
             self.db_name,
             self.db_user,
             self._db_password,
-            **{**(self.db_options or {}), **extra_conn_args},
+            **{**(self.db_options or {}), **(extra_conn_args or {})},
         )
         self.table_model = get_table_model(
             self.table, self.id_field, self.db_search_path, self._engine
@@ -618,7 +617,10 @@ def get_engine(
     conn_args = {
         **connection_options,
     }
-    engine = create_engine(conn_str, connect_args=conn_args, pool_pre_ping=True) # noqa
+    engine = create_engine(conn_str,
+                           connect_args=conn_args,
+                           pool_pre_ping=True
+                           )
     return engine
 
 
