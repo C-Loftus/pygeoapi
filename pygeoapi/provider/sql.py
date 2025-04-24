@@ -7,12 +7,14 @@
 #          Colin Blackburn <colb@bgs.ac.uk>
 #          Francesco Bartoli <xbartolone@gmail.com>
 #          Bernhard Mallinger <bernhard.mallinger@eox.at>
+#          Colton Loftus <cloftus@lincolninst.edu>
 #
 # Copyright (c) 2018 Jorge Samuel Mendes de Jesus
 # Copyright (c) 2025 Tom Kralidis
 # Copyright (c) 2022 John A Stevenson and Colin Blackburn
 # Copyright (c) 2025 Francesco Bartoli
 # Copyright (c) 2024 Bernhard Mallinger
+# Copyright (c) 2025 Colton Loftus
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
