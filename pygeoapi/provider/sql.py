@@ -518,38 +518,13 @@ class GenericSQLProvider(BaseProvider):
 
         return property_filters
 
-    def _get_bbox_filter(self, bbox: list[float], driver: str):
+    def _get_bbox_filter(self, bbox: list[float]):
         """
         Construct the bounding box filter function that
         will be used in the query; this is dependent on the
         underlying db driver
         """
-        if not bbox:
-            return True  # Let everything through if no bbox
-
-        # If we are using mysql we can't use ST_MakeEnvelope since it is
-        # postgis specific and thus we have to use MBRContains with a WKT
-        # POLYGON
-        if 'mysql' in driver:
-            # Create WKT POLYGON from bbox: (minx, miny, maxx, maxy)
-            minx, miny, maxx, maxy = bbox
-            polygon_wkt = f'POLYGON(({minx} {miny}, {maxx} {miny}, {maxx} {maxy}, {minx} {maxy}, {minx} {miny}))'  # noqa
-            geom_column = getattr(self.table_model, self.geom)
-            # Use MySQL MBRContains for index-accelerated bounding box checks
-            bbox_filter = func.MBRContains(
-                func.ST_GeomFromText(polygon_wkt), geom_column
-            )
-        elif 'postgres' in driver:
-            # Assuming postgis, we can use ST_MakeEnvelope
-            envelope = ST_MakeEnvelope(*bbox)
-            geom_column = getattr(self.table_model, self.geom)
-            bbox_filter = geom_column.intersects(envelope)
-        else:
-            raise ValueError(
-                f"Driver '{driver}' is ambiguous or not supported"
-            )
-
-        return bbox_filter
+        raise NotImplementedError
 
     def _get_datetime_filter(self, datetime_):
         if datetime_ in (None, '../..'):
@@ -724,6 +699,20 @@ class PostgreSQLProvider(GenericSQLProvider):
         }
         super().__init__(provider_def, driver_name, extra_conn_args)
 
+    def _get_bbox_filter(self, bbox: list[float]):
+        """
+        Construct the bounding box filter function
+        """
+        if not bbox:
+            return True  # Let everything through if no bbox
+
+        # Since this provider uses postgis, we can use ST_MakeEnvelope
+        envelope = ST_MakeEnvelope(*bbox)
+        geom_column = getattr(self.table_model, self.geom)
+        bbox_filter = geom_column.intersects(envelope)
+
+        return bbox_filter
+
 
 class MySQLProvider(GenericSQLProvider):
     """
@@ -746,3 +735,24 @@ class MySQLProvider(GenericSQLProvider):
             'charset': 'utf8mb4'
         }
         super().__init__(provider_def, driver_name, extra_conn_args)
+
+    def _get_bbox_filter(self, bbox: list[float]):
+        """
+        Construct the bounding box filter function
+        """
+        if not bbox:
+            return True  # Let everything through if no bbox
+
+        # If we are using mysql we can't use ST_MakeEnvelope since it is
+        # postgis specific and thus we have to use MBRContains with a WKT
+        # POLYGON
+
+        # Create WKT POLYGON from bbox: (minx, miny, maxx, maxy)
+        minx, miny, maxx, maxy = bbox
+        polygon_wkt = f'POLYGON(({minx} {miny}, {maxx} {miny}, {maxx} {maxy}, {minx} {maxy}, {minx} {miny}))'  # noqa
+        geom_column = getattr(self.table_model, self.geom)
+        # Use MySQL MBRContains for index-accelerated bounding box checks
+        bbox_filter = func.MBRContains(
+            func.ST_GeomFromText(polygon_wkt), geom_column
+        )
+        return bbox_filter

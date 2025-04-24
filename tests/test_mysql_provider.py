@@ -48,10 +48,10 @@ services:
         ports:
         - 3306:3306
         environment:
-        MYSQL_ROOT_PASSWORD: mysql
-        MYSQL_USER: pygeoapi
-        MYSQL_PASSWORD: mysql
-        MYSQL_DATABASE: test_geo_app
+            MYSQL_ROOT_PASSWORD: mysql
+            MYSQL_USER: pygeoapi
+            MYSQL_PASSWORD: mysql
+            MYSQL_DATABASE: test_geo_app
         volumes:
         - ./tests/data/mysql_data.sql:/docker-entrypoint-initdb.d/init.sql:ro
 """
