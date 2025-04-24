@@ -73,16 +73,15 @@ def config():
     return {
         'name': 'MySQL',
         'type': 'feature',
-        'data': {'host': 'localhost',
-                 'dbname': 'test_geo_app',
-                 'user': 'root',
-                 'port': 3306,
-                 'password': PASSWORD,
-                 'search_path': ['test_geo_app']
-                 },
-        'options': {
-            'connect_timeout': 10
+        'data': {
+            'host': 'localhost',
+            'dbname': 'test_geo_app',
+            'user': 'root',
+            'port': 3306,
+            'password': PASSWORD,
+            'search_path': ['test_geo_app']
         },
+        'options': {'connect_timeout': 10},
         'id_field': 'locationID',
         'table': 'location',
         'geom_field': 'locationCoordinates'
@@ -93,9 +92,14 @@ def test_valid_connection_options(config):
     if config.get('options'):
         keys = list(config['options'].keys())
         for key in keys:
-            assert key in ['connect_timeout', 'tcp_user_timeout', 'keepalives',
-                           'keepalives_idle', 'keepalives_count',
-                           'keepalives_interval']
+            assert key in [
+                'connect_timeout',
+                'tcp_user_timeout',
+                'keepalives',
+                'keepalives_idle',
+                'keepalives_count',
+                'keepalives_interval'
+            ]
 
 
 def test_query(config):
@@ -142,18 +146,14 @@ def test_query_with_paging(config):
 def test_query_bbox(config):
     """Test query with a specified bounding box"""
     p = MySQLProvider(config)
-    boxed_feature_collection = p.query(
-        bbox=[0, 0, 0, 0]
-    )
+    boxed_feature_collection = p.query(bbox=[0, 0, 0, 0])
     assert len(boxed_feature_collection['features']) == 0
 
     nyc_bbox = [-73.9754, 40.7729, -73.9554, 40.7929]
 
-    boxed_feature_collection = p.query(
-        bbox=nyc_bbox
-    )
+    boxed_feature_collection = p.query(bbox=nyc_bbox)
     assert len(boxed_feature_collection['features']) == 1
-    assert boxed_feature_collection["features"][0]["id"] == 1
+    assert boxed_feature_collection['features'][0]['id'] == 1
 
 
 def test_query_sortby(config):

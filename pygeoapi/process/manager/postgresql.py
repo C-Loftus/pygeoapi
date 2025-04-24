@@ -92,14 +92,14 @@ class PostgreSQLManager(BaseManager):
             if isinstance(self.connection, str):
                 _url = make_url(self.connection)
                 self._engine = get_engine(
-                    "postgresql+psycopg2",
+                    'postgresql+psycopg2',
                     _url.host,
                     _url.port,
                     _url.database,
                     _url.username,
                     _url.password)
             else:
-                self._engine = get_engine("postgresql+psycopg2",
+                self._engine = get_engine('postgresql+psycopg2',
                                           **self.connection)
         except Exception as err:
             msg = 'Test connecting to DB failed'
