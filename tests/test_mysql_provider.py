@@ -1,18 +1,7 @@
 # =================================================================
 #
-# Authors: Just van den Broecke <justb4@gmail.com>
-#          Tom Kralidis <tomkralidis@gmail.com>
-#          John A Stevenson <jostev@bgs.ac.uk>
-#          Colin Blackburn <colb@bgs.ac.uk>
-#          Francesco Bartoli <xbartolone@gmail.com>
-#          Bernhard Mallinger <bernhard.mallinger@eox.at>
-#          Colton Loftus <cloftus@lincolninst.edu>
+# Authors: Colton Loftus <cloftus@lincolninst.edu>
 #
-# Copyright (c) 2019 Just van den Broecke
-# Copyright (c) 2025 Tom Kralidis
-# Copyright (c) 2022 John A Stevenson and Colin Blackburn
-# Copyright (c) 2025 Francesco Bartoli
-# Copyright (c) 2024 Bernhard Mallinger
 # Copyright (c) 2025 Colton Loftus
 #
 # Permission is hereby granted, free of charge, to any person
