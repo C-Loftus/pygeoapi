@@ -614,8 +614,8 @@ def test_describe_collections(config, api_):
     ]
     for crs in crs_set:
         assert crs in collection['crs']
-    assert collection['storageCRS'] is not None
-    assert collection['storageCRS'] == 'http://www.opengis.net/def/crs/OGC/1.3/CRS84' # noqa
+    assert collection['storageCrs'] is not None
+    assert collection['storageCrs'] == 'http://www.opengis.net/def/crs/OGC/1.3/CRS84' # noqa
     assert 'storageCrsCoordinateEpoch' not in collection
 
     # French language request
@@ -652,8 +652,8 @@ def test_describe_collections(config, api_):
         if crs in default_crs_list:
             contains_default = True
     assert contains_default
-    assert collection['storageCRS'] is not None
-    assert collection['storageCRS'] == 'http://www.opengis.net/def/crs/OGC/1.3/CRS84' # noqa
+    assert collection['storageCrs'] is not None
+    assert collection['storageCrs'] == 'http://www.opengis.net/def/crs/OGC/1.3/CRS84' # noqa
     assert collection['storageCrsCoordinateEpoch'] == 2017.23
 
 
@@ -879,7 +879,7 @@ def test_evaluate_limit():
     collection = {}
     server = {'default_items': 2, 'max_items': 3, 'on_exceed': 'error'}
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         assert evaluate_limit('40', server, collection) == 40
 
     collection = {'default_items': 10}

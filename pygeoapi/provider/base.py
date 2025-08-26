@@ -69,10 +69,12 @@ class BaseProvider:
         self.uri_field = provider_def.get('uri_field')
         self.x_field = provider_def.get('x_field')
         self.y_field = provider_def.get('y_field')
+        self.z_field = provider_def.get('z_field')
         self.time_field = provider_def.get('time_field')
         self.title_field = provider_def.get('title_field')
         self.properties = provider_def.get('properties', [])
         self.file_types = provider_def.get('file_types', [])
+        self.include_extra_query_parameters = provider_def.get('include_extra_query_parameters', False)  # noqa
         self._fields = {}
         self.filename = None
 

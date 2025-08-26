@@ -19,12 +19,13 @@ parameters.
    :header: Provider, property filters/display, resulttype, bbox, datetime, sortby, skipGeometry, domains, CQL, transactions, crs
    :align: left
 
-   `CSV`_,✅/✅,results/hits,❌,❌,❌,✅,❌,❌,❌,✅
+   `CSV`_,✅/✅,results/hits,✅,❌,❌,✅,❌,❌,❌,✅
    `Elasticsearch`_,✅/✅,results/hits,✅,✅,✅,✅,✅,✅,✅,✅
    `ERDDAP Tabledap Service`_,❌/❌,results/hits,✅,✅,❌,❌,❌,❌,❌,✅
    `ESRI Feature Service`_,✅/✅,results/hits,✅,✅,✅,✅,❌,❌,❌,✅
-   `GeoJSON`_,✅/✅,results/hits,❌,❌,❌,✅,❌,❌,❌,✅
+   `GeoJSON`_,✅/✅,results/hits,✅,❌,❌,✅,❌,❌,❌,✅
    `MongoDB`_,✅/❌,results,✅,✅,✅,✅,❌,❌,❌,✅
+   `MySQL`_,✅/✅,results/hits,✅,✅,✅,✅,❌,✅,✅,✅
    `OGR`_,✅/❌,results/hits,✅,❌,❌,✅,❌,❌,❌,✅
    `OpenSearch`_,✅/✅,results/hits,✅,✅,✅,✅,❌,✅,✅,✅
    `Oracle`_,✅/✅,results/hits,✅,❌,✅,✅,❌,❌,❌,✅
@@ -38,7 +39,7 @@ parameters.
 .. note::
 
    * All Providers that support `bbox` also support the `bbox-crs` parameter. `bbox-crs` is handled within pygeoapi core.
-   * All Providers support the `crs` parameter to reproject (transform) response data. Some, like PostgreSQL and OGR, perform this natively: '✅n'.
+   * All Providers support the `crs` parameter to reproject (transform) response data. Some, like PostgreSQL and OGR, perform this natively.
 
 
 Connection examples
@@ -221,6 +222,76 @@ Here `test` is the name of database , `points` is the target collection name.
          name: MongoDB
          data: mongodb://localhost:27017/testdb
          collection: testplaces
+
+
+.. _MySQL:
+
+MySQL
+^^^^^
+
+.. note::
+   Requires Python packages sqlalchemy, geoalchemy2 and pymysql
+
+Must have MySQL installed.
+
+.. code-block:: yaml
+
+   providers:
+       - type: feature
+         name: MySQL
+         data:
+             host: 127.0.0.1
+             port: 3306 # Default 3306 if not provided
+             dbname: test_geo_app
+             user: mysql
+             password: mysql
+             search_path: [test_geo_app] # Same as dbname
+         id_field: locationID
+         table: location
+         geom_field: locationCoordinates
+
+A number of database connection options can be also configured in the provider in order to adjust properly the sqlalchemy engine client.
+These are optional and if not specified, the default from the engine will be used. Please see also `SQLAlchemy docs <https://docs.sqlalchemy.org/en/14/core/engines.html#custom-dbapi-connect-arguments-on-connect-routines>`_.
+
+.. code-block:: yaml
+
+    providers:
+       - type: feature
+         name: MySQL
+         data:
+             host: 127.0.0.1
+             port: 3306 # Default 3306 if not provided
+             dbname: test_geo_app
+             user: mysql
+             password: mysql
+             search_path: [test_geo_app] # Same as dbname
+         options:
+             # Maximum time to wait while connecting, in seconds.
+             connect_timeout: 10
+             # Number of *milliseconds* that transmitted data may remain
+             # unacknowledged before a connection is forcibly closed.
+             tcp_user_timeout: 10000
+             # Whether client-side TCP keepalives are used. 1 = use keepalives,
+             # 0 = don't use keepalives.
+             keepalives: 1
+             # Number of seconds of inactivity after which TCP should send a
+             # keepalive message to the server.
+             keepalives_idle: 5
+             # Number of TCP keepalives that can be lost before the client's
+             # connection to the server is considered dead.
+             keepalives_count: 5
+             # Number of seconds after which a TCP keepalive message that is not
+             # acknowledged by the server should be retransmitted.
+             keepalives_interval: 1
+         id_field: locationID
+         table: location
+         geom_field: locationCoordinates
+
+This provider has support for the CQL queries as indicated in the Provider table above.
+
+.. seealso::
+  :ref:`cql` for more details on how to use Common Query Language (CQL) to filter the collection with specific queries.
+
 
 OGR
 ^^^
@@ -487,12 +558,19 @@ The ``ORACLE_POOL_MIN`` and ``ORACLE_POOL_MAX`` environment variables are used t
 If none or only one of the environment variables is set, session pooling will not be activated and standalone connections are established at every request.
 
 
+Extra_params
+""""""""""""
+The Oracle provider allows for additional parameters that can be passed in the request. It allows for the processing of additional parameters that are not defined in the ``pygeoapi-config.yml`` to be passed to a custom SQL-Manipulator-Plugin. An example use case of this is advanced filtering without exposing the filtered columns like follows ``.../collections/some_data/items?is_recent=true``. The ``SqlManipulator`` plugin's ``process_query`` method would receive ``extra_params = {'is_recent': 'true'}`` and could dynamically add a custom condition to the SQL query, like ``AND SYSDATE - create_date < 30``.
+
+The ``include_extra_query_parameters`` has to be set to ``true`` for the collection in ``pygeoapi-config.yml``. This ensures that the additional request parameters (e.g. ``is_recent=true``) are not discarded. 
+
+
 Custom SQL Manipulator Plugin
 """""""""""""""""""""""""""""
 The provider supports a SQL-Manipulator-Plugin class. With this, the SQL statement could be manipulated. This is
 useful e.g. for authorization at row level or manipulation of the explain plan with hints. 
 
-An example an more information about that feature you can find in the test class in tests/test_oracle_provider.py.
+More information and examples about this feature can be found in ``tests/provider/test_oracle_provider.py``.
 
 .. _Parquet:
 
@@ -732,6 +810,32 @@ To publish a TinyDB (`see website <https://tinydb.readthedocs.io>`_) index, the 
          data: /path/to/file.db
          id_field: identifier
          time_field: datetimefield
+
+.. _including-extra-query-parameters:
+
+Including extra query parameters
+--------------------------------
+
+By default, pygeoapi ignores any extra query parameters.  For example, for a given ``.../items`` query, the query key-value pair ``foo1=bar1`` (if ``foo1`` is not a valid property of a given collection) would be ignored by pygeoapi as well as the underlying provider.
+
+To include/accept extra query parameters, the ``include_extra_query_parameters`` directive can be set in provider configuration:
+
+.. code-block:: yaml
+
+   providers:
+       - type: feature
+         editable: true|false  # optional, default is false
+         name: TinyDB
+         data: /path/to/file.db
+         id_field: identifier
+         time_field: datetimefield
+         include_extra_query_parameters: true
+
+
+With the above configuration, pygeoapi will pass ``foo1=bar1`` to the underlying provider.  If the underlying provider does not have ``foo1`` as a queryable property, then an exception will be returned citing an unknown property.
+
+Extra query parameters are useful for custom providers who may wish for specific functionality to be triggered by query parameters that are not bound to a given collection's properties.
+
 
 Controlling the order of properties
 -----------------------------------

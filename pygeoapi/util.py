@@ -2,7 +2,7 @@
 #
 # Authors: Tom Kralidis <tomkralidis@gmail.com>
 #
-# Copyright (c) 2022 Tom Kralidis
+# Copyright (c) 2025 Tom Kralidis
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
@@ -38,6 +38,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from enum import Enum
+from heapq import heappush
 import json
 import logging
 import mimetypes
@@ -87,7 +88,10 @@ LOGGER = logging.getLogger(__name__)
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 THISDIR = Path(__file__).parent.resolve()
-TEMPLATES = THISDIR / 'templates'
+RESOURCESDIR = THISDIR / 'resources'
+TEMPLATESDIR = THISDIR / 'templates'
+DEFINITIONSDIR = RESOURCESDIR / 'definitions'
+SCHEMASDIR = RESOURCESDIR / 'schemas'
 
 
 # Type for Shapely geometrical objects.
@@ -448,7 +452,7 @@ def render_j2_template(config: dict, tpl_config: dict, template: Path,
     :returns: string of rendered template
     """
 
-    template_paths = [TEMPLATES, '.']
+    template_paths = [TEMPLATESDIR, '.']
 
     locale_dir = config['server'].get('locale_dir', 'locale')
     LOGGER.debug(f'Locale directory: {locale_dir}')
@@ -458,7 +462,7 @@ def render_j2_template(config: dict, tpl_config: dict, template: Path,
         template_paths.insert(0, templates)
         LOGGER.debug(f'using custom templates: {templates}')
     except (KeyError, TypeError):
-        LOGGER.debug(f'using default templates: {TEMPLATES}')
+        LOGGER.debug(f'using default templates: {TEMPLATESDIR}')
 
     env = Environment(loader=FileSystemLoader(template_paths),
                       extensions=['jinja2.ext.i18n'],
@@ -1054,3 +1058,58 @@ def _inplace_replace_geometry_filter_name(
             else:
                 _inplace_replace_geometry_filter_name(
                     sub_node, geometry_column_name)
+
+
+def get_from_headers(headers: dict, header_name: str) -> str:
+    """
+    Gets case insensitive value from dictionary.
+    This is particularly useful when trying to get
+    headers from Starlette and Flask without issue
+
+    :param headers: `dict` of request headers.
+    :param header_name: Name of request header.
+
+    :returns: `str` value of header
+    """
+
+    cleaned_headers = {k.strip().lower(): v for k, v in headers.items()}
+    return cleaned_headers.get(header_name.lower(), '')
+
+
+def get_choice_from_headers(headers: dict,
+                            header_name: str,
+                            all: bool = False) -> Union[str, List[str]]:
+    """
+    Gets choices from a request dictionary,
+    considering numerical ordering of preferences.
+    Supported are complex preference strings (e.g. "fr-CH, fr;q=0.9, en;q=0.8")
+
+    :param headers: `dict` of request headers.
+    :param header_name: Name of request header.
+    :param all: bool to return one or all header values.
+
+    :returns: Sorted choice or choices from header
+    """
+
+    # Select header of interest
+    header = get_from_headers(headers=headers, header_name=header_name)
+    if header == '':
+        return
+
+    # Parse choices, extracting optional q values (defaults to 1.0)
+    choices = []
+    for i, part in enumerate(header.split(',')):
+        match = re.match(r'^([^;]+)(?:;q=([\d.]+))?$', part.strip())
+        if match:
+            value, q_value = match.groups()
+            q_value = float(q_value) if q_value else 1.0
+
+            # Sort choices by q value and index
+            if 0 <= q_value <= 1:
+                heappush(choices, (1 / q_value, i, value))
+
+    # Drop q value
+    sorted_choices = [choice[-1] for choice in choices]
+
+    # Return one or all choices
+    return sorted_choices if all else sorted_choices[0]
